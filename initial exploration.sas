@@ -58,6 +58,7 @@ run;
 
 /*
 * Investigate smoking variables and why there are four of them - appear to be subsequent forms of smoking if more than one type;
+* See questionaire for info on skip patterns: https://cls.ucl.ac.uk/wp-content/uploads/2017/07/MCS1_CAPI_Questionnaire_Documentation_March_2006_v1.1.pdf;
 	proc freq data=parent_interview;
 	tables APSMUS0A APSMUS0B APSMUS0C APSMUS0D;
 	title "Frequencies of Smoking Variables" ;
@@ -80,7 +81,40 @@ run;
 	var APSMUS0A APSMUS0B APSMUS0C APSMUS0D;
 	title 'Values of all smoke variables where the third one is not missing' ;
 	run;
+
+    proc freq data=parent_interview;
+	tables APSMTY00 * APSMUS0A /missing;
+	title "Current smoking V. smoked in last two years";
+	* 2,219 does not currently smoke but yes to smoke in last 2 yrs | 19,010 to does not currently smoke and hadn't in last two years;
+	* All missings on "smoked in last 2 years" have valid answers for current smoking (10,505);
+	run;
 */
+* Get smoking during pregnancy - these vars non-missing only if current smoke or smoke in last two years;
+	* APCIPR00 - Number cig per day before preg;
+	* APSMCH00 - Changed number during pregnancy;
+	* APWHCH00 - Which month changed smoking habits;
+	* APCICH00 - Number smoked per day after change;
+
+* Write to file;
+ods html file="J:\UK Project\Exploratory results\smoking check.html";
+
+	 proc freq data=parent_interview;
+	 where APSMUS0A in (2,3) OR APSMUS0B in (2,3) OR APSMUS0C in (2,3) OR APSMUS0D in (2,3) OR APSMTY00=1;
+	 tables APCIPR00 APSMCH00;
+	 title "Of those that currently smoked or have smoked regularly during past two years";
+
+	 proc freq data=parent_interview;
+	 where (APSMUS0A in (2,3) OR APSMUS0B in (2,3) OR APSMUS0C in (2,3) OR APSMUS0D in (2,3) OR APSMTY00=1) AND APSMCH00=1;
+	 tables APWHCH00 APCICH00;
+	 title "Of those that currently smoked or have smoked regularly during past two years and who changed habits during pregnancy";
+	 * 85% changed during first trimester;
+	run;
+
+ods html close;
+run;
+
+
+
 
 * Check other files;
  proc import
