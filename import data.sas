@@ -2,7 +2,12 @@
 * Import data, keep needed vars, and merge.
 * - see 'initial exploration.sas' for prior checks, etc.
 * - import SPSS versions to retain value labels, etc.
+* 
+* Results in mother_child data sets.
 *
+;
+
+libname analysis "J:\UK Project\Analysis Data\Data sets";
 
 * Import parent interview data - 31,734 obs, 664 variables;
   proc import
@@ -22,7 +27,7 @@
   proc import
   file = "J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
   out = parent_derived
-  dbms=spss;
+  dbms=spss; 
 
  * Merge parent_interview and parent_derived;
    proc sort data=parent_interview; by MCSID APNUM00; run;
@@ -35,12 +40,26 @@
    if a and not b then output ina;  *none;
    if b and not a then output inb;  *2,150 obs - most of these were fathers not interviewd;
 run;
-   * Check elig, participation of those not in interview file;
-	/*  proc freq data=inb; tables AELIG00 ARESP00 ADDRES00;*/	   
+
+* Keep only mothers; 
+  data moms;
+  set parent_info;
+	where ADDRES00 = 1; *18492 mothers;
 run;
 
+* Merge father's smoking;
+  data fathers;
+  set parent_info (keep=MCSID ADDRES00 APSMUS0A);
+	where ADDRES00 = 2; 
+	rename
+		APSMUS0A = APSMUS0A_FATHER;
+run;
+
+* Check elig, participation of those not in interview file;
+	   /*  proc freq data=inb; tables AELIG00 ARESP00 ADDRES00;*/	   
+
 * Check who was interviewed - 99.81% were mothers or fathers;
-	proc freq data=parent_info; tables ADDRES00 APSMKR00;run; 
+	/* proc freq data=parent_info; tables ADDRES00 APSMKR00;run; */
 
 * Smoking var info:
 	 * APSMUS0A	- First type of tobacco product, current smoking;
@@ -54,7 +73,7 @@ run;
 	 * APCICH00 - Number smoked per day after change;
 	 * APSMKR00 - Anyone smokes in same room as CM;
 
-
+/*
 * Identify mothers and rename smoking vars;
   data mothers;
   set parent_info;
@@ -99,7 +118,16 @@ run;
   If a and not b then output ina;
   If b and not a then output inb;
   run;
+*/
 
+* Merge father smoking info;
+  data mothers ina inb;
+  merge moms(in=a) fathers(in=b);
+  by MCSID;
+  if a then output mothers;
+  if a and not b then output ina; * 5351 obs;
+  if b and not a then output inb; * 41 obs;
+  run;
 
 	 
 *-----* Child Data *-----*;
@@ -132,9 +160,13 @@ run;
 
 * Merge child data with parent info;  
   data outdat ina inb;
-  merge parent_combined(in=a) child_info(in=b);
+  merge mothers(in=a) child_info(in=b);
   by MCSID;
   output outdat; 				  * 32165 obs;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 11 obs;
+  if b and not a then output inb; * 11 obs (52 obs when limit parents to mother only);
+  run;
+
+  data analysis.mother_child;
+  set outdat;
   run;
