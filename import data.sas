@@ -14,7 +14,7 @@ libname analysis "J:\UK Project\Analysis Data\Data sets";
   file = "J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
   out = spss_dat
   dbms=spss;
-  
+  run;
 * Keep needed variables from parent_interview;
   data parent_interview;
   set spss_dat (keep=MCSID APNUM00 AELIG00 ARESP00 ACBAGE00 APFCIN00 APBETI00 APILPR00 APILWM0A APILWM0B APILWM0C
@@ -53,6 +53,7 @@ run;
 	where ADDRES00 = 2; 
 	rename
 		APSMUS0A = APSMUS0A_FATHER;
+	drop ADDRES00;
 run;
 
 * Check elig, participation of those not in interview file;
@@ -145,15 +146,22 @@ run;
   dbms=spss;
 run;
 
+* Keep only the main parent response;
+  data parent_cm_main;
+  set parent_cm_interview;
+  	where ARESP00=1;
+run;
+
+
 * Merge data that are at the cohort member level;
   proc sort data=cm_derived; by MCSID ACNUM00;  
-  proc sort data=parent_cm_interview; by MCSID ACNUM00;
+  proc sort data=parent_cm_main; by MCSID ACNUM00;
 
   data child_info ina inb;
-  merge cm_derived(in=a) parent_cm_interview(in=b);
+  merge cm_derived(in=a) parent_cm_main(in=b);
   by MCSID ACNUM00;
-  if a and b then output child_info;   * 32,165 obs; 
-  if a and not b then output ina; 	   * 0 obs;
+  if a and b then output child_info;   * 18,766 obs; 
+  if a and not b then output ina; 	   * 20 obs;
   if b and not a then output inb; 	   * 0 obs;
   run;
 
@@ -162,11 +170,16 @@ run;
   data outdat ina inb;
   merge mothers(in=a) child_info(in=b);
   by MCSID;
-  output outdat; 				  * 32165 obs;
+  output outdat; 				  * 18,766 obs;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 11 obs (52 obs when limit parents to mother only);
+  if b and not a then output inb; * 28 obs;
   run;
 
   data analysis.mother_child;
   set outdat;
   run;
+
+ * Save formats from imported data so they can be applied to analysis data set;
+   proc format library=analysis.formats;
+   options fmtsearch=(analysis.formats work);
+   run;
