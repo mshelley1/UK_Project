@@ -72,7 +72,7 @@ set analysis.mother_child;
 		Else if ACBFEA00=3 then Breast_Milk_Time=ACBFED00;
 		Else if ACBFEA00=4 then Breast_Milk_Time=ACBFEW00*7;
 		Else if ACBFEA00=5 then Breast_Milk_Time=ACBFEM00*30;
-		Else if ACBFEA00=6 then Breast_Milk_Time=999;   * Replace with child's age in days;
+		Else if ACBFEA00=6 then Breast_Milk_Time=ACBAGE00*30;   * Baby's age in months*30;
       end;
 	  Else if Any_Breast_Milk=0 then Breast_Milk_Time=0;
 
@@ -98,31 +98,89 @@ set analysis.mother_child;
 	  Else if ACAGSF00=4 then Age_First_Solid=ACSFMT00*30;
 	  Else if ACAGSF00=1 then Age_First_Solid=-1;
 
-	proc univariate;
-	 * var Breast_Milk_Time--Age_First_Solid;
+*
+* Checks of created variables and other vars that need recoding;
+*;
+
+	/* proc univariate;
+	  var Breast_Milk_Time--Age_First_Solid;
 	  var ACBAGE00;
 	  histogram; 
-	  run;
+	  run; */
 
-* Other vars needed
-	 * APBIWT00 - Birth weight (unit)
-	 * APWTKG00, LB, OU
-	 * ADBWGT00 - Derived CM birthweight in kilos;
-	 * APPRLM0A...E - Complications during labor;
+  * Look for substitutes;
+	If APNETA00=. and APGROA00=. then pay_miss="both";
+	Else if APNETA00=. and APGROA00 ne . then pay_miss="net";
+    Else if APNETA00 ne . and APGROA00=. then pay_miss="gross";
+	Else if APNETA00 ne . and APGROA00 ne . then pay_miss="none";
 
-data analysis_dat;
-set mother_child;
-   keep
-	MCSID CNUM
+	proc freq;
+		tables
+		/* Depression vars */
+			APLOSA00--APTRDE00 /*APTRDE00 has a lot of missings*/
+		/* Marital status */
+			APFCIN00 /*30 missing*/
+		/* Probs during preg */
+			APILPR00 /*41 missing*/
+		/* Currently preg */
+			APCUPR00 APPRMT00 /*92 and 17938 missing*/
+		/* Pay */
+			APNETA00 APNETP00 APGROA00 APGROP00 APSEPA00 pay_miss/*~4700 missing net, 7700 gross, 18K last year, 4625 both net&gross missing*/
+		/* Education */
+			APLFTE00 APACQU00 /* APVCQU00 not found; 119 missing APLFTE00, 76 missing*/ 
+		/* Weight/height */
+			APHEIG00 -- APWEIK00  /*Weight vars missing for ~1000; height missing for ~300 */
+			ADDBMI00 ADHGTM00 ADWGTK00;
+;run;
+PROC UNIVARIATE; VAR ADDBMI00 ADHGTM00 ADWGTK00;
+;run;
+
+
+* Cleanup and other recodes;
+  data mother_child2;
+  set mother_child 
+   (keep=
+	MCSID ACNUM00
 	/* Parent interview vars */
 		APNUM00 AELIG00 ARESP00
 		ACBAGE00 
 		APFCIN00 APBETI00/**/ APILPR00--APILWM0G APCUPR00 APPRMT00
 		APLOSA00--APWEES00 
 		APNETA00--APSEPA00
-		APLFTE00--APVCQU00 
+		APLFTE00--APACQU00 /* says APVCQU00 does not exist */
 		smoking_miss pregnancy_smoke /* Created */	
 	/* Parent derived vars */
-		ADDAGI00
+		ADDAGI00 ADDGAI00
+		ADDACT00 ADDWRK00
+		ADWGTK00 ADHGTM00 ADDBMI00
+	/* Parent CM interview vars */
+		APLOAP00--APWTOU00
+		APICUN00
+		ACLAWE00--ACIMAA0C
+		ACBCRY00 ACCRPR00
+	/* CM interview */
+	/* CM Derived */
+		ADBWGT00--ADAGLW00
+	/* Created vars */
+		pregnancy_smoke--Age_First_Solid);
+	
+	* Collapse preg probs into count;
+		Probs_in_pregnance = n(of APILWM0A--APILWM0G);  * count of non-missing vars;
+	* Marital status recode;
+		If APFCIN00 in (2, 3) then Married = 1;
+		Else if APFCIN00 in (1, 4, 5, 6) then Married = 0;
+
+	* Recodes to match macro for Z-scores of weight/height;
+		agedays=ACBAGE00*30; * calls for age in days but we only have month;
+		sex=
+
+	drop APILWM0A--APILWM0G APHEIG00--APSEPA00 APFCIN00; 
+	
+
+run; 
+
+proc contents data=mother_child2 position;run;
+	
+
 
 
