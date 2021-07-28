@@ -166,13 +166,39 @@ run;
   run;
 
 
+*-----* hhgrid *------*;
+* Need for CM sex, dob;
+	proc import
+	file="J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_hhgrid.sav"
+	out=hhgrid
+	dbms=spss;
+run;
+
+    data hhgrid_tmp;
+	set hhgrid (keep=MCSID ACNUM00 AHINTM00--AHCAGE00);
+		where MCSID ne "" and ACNUM00 ne .; *Keep only cohort members;
+
+	proc sort data=hhgrid_tmp;
+		by MCSID ACNUM00;
+run;
+
+* Merge with other child info;
+  data outchild ina inb;
+  merge child_info(in=a) hhgrid_tmp(in=b);
+  by MCSID ACNUM00;
+  output outchild;
+  if a and not b then output ina; * 0 obs;
+  if b and not a then output inb; * 20 obs;
+  run;
+
+
 * Merge child data with parent info;  
   data outdat ina inb;
-  merge mothers(in=a) child_info(in=b);
+  merge mothers(in=a) outchild(in=b);
   by MCSID;
-  output outdat; 				  * 18,766 obs;
+  output outdat; 				  * 18,786 obs;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 28 obs;
+  if b and not a then output inb; * 48 obs;
   run;
 
   data analysis.mother_child;
