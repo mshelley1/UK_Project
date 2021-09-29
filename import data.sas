@@ -21,8 +21,9 @@ libname analysis "J:\UK Project\Analysis Data\Data sets";
 					 APILWM0D APILWM0E APILWM0F APILWM0G APCUPR00 APPRMT00 APLOSA00 APDEAN00 APTRDE00 APHEIG00 APHEIF00
 					 APHEII00 APHECM00 APWTBF00 APWBST00 APWBLB00 APWBKG00 APWEIG00 APWEIS00 APWEIP00 APWEIK00 APWEES00 APSMUS0A
                      APSMUS0B APSMUS0C APSMUS0D APSMMA00 APPIOF00 APSMTY00 APSMEV00 APCIPR00 APSMCH00 APWHCH00 APCICH00 APSMKR00
-					 APNETA00 APNETP00 APTAXC0A APTAXC0B APTAXC0C APGROA00 APGROP00 APSEPA00 APLFTE00 APACQU00 );
-
+					 APNETA00 APNETP00 APTAXC0A APTAXC0B APTAXC0C APGROA00 APGROP00 APSEPA00 APLFTE00 APACQU00
+					 ADWKST00 APSEMO00 APFRTI00 APDEAN00 APLOIL00);
+RUN;
 * Import parent derived data;
   proc import
   file = "J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
@@ -45,7 +46,7 @@ run;
   data moms;
   set parent_info;
 	where ADDRES00 = 1; *18492 mothers;
-run;
+
 
 * Merge father's smoking;
   data fathers;
@@ -139,6 +140,7 @@ run;
   dbms=spss;
   run;
 
+*----* Parent Interview Data *----*;
 * Import parent interview about cohort member - 32,165 obs;
   proc import
   file = "J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_cm_interview.sav"
@@ -152,7 +154,6 @@ run;
   	where ARESP00=1;
 run;
 
-
 * Merge data that are at the cohort member level;
   proc sort data=cm_derived; by MCSID ACNUM00;  
   proc sort data=parent_cm_main; by MCSID ACNUM00;
@@ -160,11 +161,11 @@ run;
   data child_info ina inb;
   merge cm_derived(in=a) parent_cm_main(in=b);
   by MCSID ACNUM00;
-  if a and b then output child_info;   * 18,766 obs; 
+  *if a and b output child_info;   * 18,766 obs; 
+  output child_info;
   if a and not b then output ina; 	   * 20 obs;
   if b and not a then output inb; 	   * 0 obs;
   run;
-
 
 *-----* hhgrid *------*;
 * Need for CM sex, dob;
@@ -201,9 +202,54 @@ run;
   if b and not a then output inb; * 48 obs;
   run;
 
-  data analysis.mother_child;
-  set outdat;
+
+
+*----* Geographically linked data *----*
+* Need for country of interview;
+  proc import
+  file="J:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_geographically_linked_data.sav"
+  out=geodat
+  dbms=spss;
+run;
+	data geodat_tmp;
+	set geodat (keep=MCSID AACTRY00);
+	  proc sort data=geodat_tmp; by MCSID;
+
+* Merge with other data;
+  data outgeo ina inb;
+  merge outdat(in=a) geodat_tmp(in=b);
+  by MCSID;
+  output outgeo;					* 18,798 obs;
+  if a and not b then output ina;	* 0 obs;
+  if b and not a then output inb;	* 12 obs;
+run;
+
+
+*-----* Longitudinal family file *---------*;
+* Need this for weights;
+  proc import
+  file="J:\UK Project\Data Downloads\UKDA-8172-spss\spss\spss25\mcs_longitudinal_family_file.sav"
+  out=long_fam
+  dbms=spss;
+run;
+   proc sort; by MCSID;
+
+
+* Merge;
+   data outwt ina inb;
+   merge outgeo(in=a) long_fam(in=b);
+   output outwt;
+   if a and not b then output ina;
+   if b and not a then output inb;
   run;
+
+
+
+  data analysis.mother_child;
+  set outgeo;
+  run;
+
+
 
  * Save formats from imported data so they can be applied to analysis data set;
    proc format library=analysis.formats;
