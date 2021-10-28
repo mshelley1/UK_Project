@@ -2,14 +2,14 @@
 * Run analyses on data set created in "data prep.sas"
 *;
 
-libname analysis "J:\UK Project\Analysis Data\Data sets";
+libname analysis "K:\UK Project\Analysis Data\Data sets";
 
 proc format library=analysis.formats;
 options fmtsearch=(analysis.formats work);
 
-
 data dat1;
-set analysis.analysis_dat (keep=waz_recent wapct_recent ApCUPR00--ADDAGI00 ADDACT00 ADDWRK00 ADDBMI00 ACNUM00-- ADERLT00 ADGEST00 ADAGLW00--APALIM00 AHCSEX00 pregnancy_smoke--wapct_birth);
+set analysis.analysis_dat_2 (keep=waz_recent wapct_recent APCUPR00--ADDAGI00 ADDACT00 ADDWRK00 ADDBMI00 ACNUM00-- ADERLT00 ADGEST00 ADAGLW00--APALIM00 AHCSEX00 pregnancy_smoke--wapct_birth
+									ADD06E00 education ADWKST00 hh_income see_parents see_friends BMI_Range APLOIL00 AOVWT2 Country);
 run;
 
 * Pregnancy_smoke will be the "by" variable, so check its distribution first...0:65%, 1-10:18.23%, >10:16.67% ;

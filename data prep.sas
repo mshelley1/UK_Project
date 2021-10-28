@@ -10,8 +10,7 @@ proc format library=analysis.formats;
 options fmtsearch=(analysis.formats work);
 
 data mother_child;
-set analysis.mother_child; 
-
+set analysis.mother_child_2;
 * Classify mothers' prenatal smoking
 * Smoking var info:
 	 * APSMUS0A	- First type of tobacco product, current smoking;
@@ -114,6 +113,30 @@ set analysis.mother_child;
 	Else if APNETA00=. and APGROA00 ne . then pay_miss="net";
     Else if APNETA00 ne . and APGROA00=. then pay_miss="gross";
 	Else if APNETA00 ne . and APGROA00 ne . then pay_miss="none";
+  * Recode education;
+	If 1 <= ADACAQ00 <= 3 then education=1;  *1 to 3;
+	Else if 4<=ADACAQ00<=5 then education=2; *4 to 5;
+	Else if ADACAQ00 ne . then education=9;  *None or overseas;
+	Else if ADACAQ00=. then education=.;
+  * ADWKST00 corresponds exactly;
+  * Recode Income levels (single or family);
+    If 2<=APNILP00<=9 or 2<=APNICO00<=9 then hh_income=1; *less than 10,400;
+	Else If 10<=APNILP00<=13 or 10<=APNICO00<=13 then hh_income=2; *10400-20800;
+	Else If 14<=APNILP00<=16 or 14<=APNICO00<=16 then hh_income=3; *20800-31200;
+	Else If 17<=APNILP00<=19 or 17<=APNICO00<=19 then hh_income=4; *greater than 31200;
+	Else If APNILP00 ne . or APNICO00 ne . then hh_income=-9; *don't know, refused, etc.;
+  * Social Support;
+	If APSEMO00 in (1,2,3) then see_parents=1;
+	Else if APSEMO00 ne . then see_parents=2;
+	If APFRTI00 in (1,2,3,4) then see_friends=1;
+	Else if APFRTI00 ne . then see_friends=2;
+  * APLOIL00 and APDEAN00 as is;
+  * BMI;
+	If . < ADBMIPRE < 18.5 then BMI_Range = 1;      *underweidght;
+	Else if 18.5 <= ADBMIPRE < 25 then BMI_Range=2; *healthy;
+	Else if 25 <= ADBMIPRE < 30 then BMI_Range=3;   *overweight;
+	Else if 30 <= ADBMIPRE then BMI_Range=4;		   *obese;
+
 /*
 	proc freq;
 		tables
@@ -221,6 +244,11 @@ run;
 				waz_birth="weight-for-age z based on most birth weight (WHO macro)"
 				wapct_birth="weight-for-age percentile based on most birth weight (WHO macro)"
 				pay_miss="which pay variables are missing"
+				education="education level (created from ADACAQ00)"
+				hh_income="income level (created from APNILP00 and APNICO00)"
+				see_parents="wheter has social support from parents (created from APSEMO00)"
+				see_friends="whether has social support from friends (created from APFRTI00)"
+				BMI_Range="1=underweight, 2=healthy, 3=overweight, 4=obese (created from ADBMIPRE)"
 				;
 				
 	proc contents position;run;
