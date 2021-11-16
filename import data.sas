@@ -7,11 +7,11 @@
 *
 ;
 
-libname analysis "K:\UK Project\Analysis Data\Data sets";
+libname analysis "L:\UK Project\Analysis Data\Data sets";
 
 * Import parent interview data - 31,734 obs, 664 variables;
   proc import
-  file = "K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
+  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
   out = spss_dat
   dbms=spss;
   run;
@@ -26,7 +26,7 @@ libname analysis "K:\UK Project\Analysis Data\Data sets";
 RUN;
 * Import parent derived data;
   proc import
-  file = "K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
+  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
   out = parent_derived
   dbms=spss; 
 
@@ -126,7 +126,7 @@ run;
   data mothers ina inb;
   merge moms(in=a) fathers(in=b);
   by MCSID;
-  if a then output mothers;
+  if a then output mothers; * 18,492 mothers;
   if a and not b then output ina; * 5351 obs;
   if b and not a then output inb; * 41 obs;
   run;
@@ -135,42 +135,59 @@ run;
 *-----* Child Data *-----*;
 * Import cohort member derived data - 18,786 obs;
   proc import
-  file = "K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_cm_derived.sav"
+  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_cm_derived.sav"
   out = cm_derived
   dbms=spss;
   run;
 
+
 *----* Parent Interview Data *----*;
 * Import parent interview about cohort member - 32,165 obs;
   proc import
-  file = "K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_cm_interview.sav"
+  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_cm_interview.sav"
   out = parent_cm_interview
   dbms=spss;
 run;
 
-* Keep only the main parent response;
-  data parent_cm_main;
-  set parent_cm_interview;
-  	where ARESP00=1;
+	* Keep only the main parent response or partner only if main is missing;
+	  proc sort data=parent_cm_interview; by MCSID ACNUM00;
+      data parent_cm_main;
+  	  set parent_cm_interview;
+	  	where ARESP00=1;
+
+	  data parent_cm_other;
+	  set parent_cm_interview;
+	  	where ARESP00=2;
+
+	  data parent_cm_out ina inb;
+	  merge parent_cm_other (in=b) parent_cm_main (in=a) ; *must be in this order to keep main parent response when child has both parents respond;
+	  by MCSID ACNUM00;
+	  if a or (b and not a) then output parent_cm_out;
+	  if a and not b then output ina; 
+	  if b and not a then output inb;
 run;
 
 * Merge data that are at the cohort member level;
   proc sort data=cm_derived; by MCSID ACNUM00;  
-  proc sort data=parent_cm_main; by MCSID ACNUM00;
+  proc sort data=parent_cm_out; by MCSID ACNUM00;
 
   data child_info ina inb;
-  merge cm_derived(in=a) parent_cm_main(in=b);
+  merge cm_derived(in=a) parent_cm_out(in=b);
   by MCSID ACNUM00;
-  *if a and b output child_info;   * 18,766 obs; 
   output child_info;
-  if a and not b then output ina; 	   * 20 obs;
+  if a and not b then output ina; 	   * 0 obs;
   if b and not a then output inb; 	   * 0 obs;
   run;
+
+proc contents data=child_info position;run;
+proc freq data=child_info;
+tables AELIG00 ARESP00;run;
+
 
 *-----* hhgrid *------*;
 * Need for CM sex, dob;
 	proc import
-	file="K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_hhgrid.sav"
+	file="L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_hhgrid.sav"
 	out=hhgrid
 	dbms=spss;
 run;
@@ -189,7 +206,7 @@ run;
   by MCSID ACNUM00;
   output outchild;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 20 obs;
+  if b and not a then output inb; * 0 obs;
   run;
 
 
@@ -199,15 +216,14 @@ run;
   by MCSID;
   output outdat; 				  * 18,786 obs;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 48 obs;
+  if b and not a then output inb; * 48 obs, so 18,738 that match mother/child;1
   run;
-
 
 
 *----* Geographically linked data *----*
 * Need for country of interview;
   proc import
-  file="K:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_geographically_linked_data.sav"
+  file="L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_geographically_linked_data.sav"
   out=geodat
   dbms=spss;
 run;
@@ -217,9 +233,9 @@ run;
 
 * Merge with other data;
   data outgeo ina inb;
-  merge outdat(in=a) geodat_tmp(in=b);
+  merge outdat(in=a) geodat_tmp(in=b); 
   by MCSID;
-  output outgeo;					* 18,798 obs;
+  output outgeo;					* 18,798 obs; *outdat had 18786, geodat had 18552 but is family-level;
   if a and not b then output ina;	* 0 obs;
   if b and not a then output inb;	* 12 obs;
 run;
@@ -228,11 +244,12 @@ run;
 *-----* Longitudinal family file *---------*;
 * Need this for weights;
   proc import
-  file="K:\UK Project\Data Downloads\UKDA-8172-spss\spss\spss25\mcs_longitudinal_family_file.sav"
+  file="L:\UK Project\Data Downloads\UKDA-8172-spss\spss\spss25\mcs_longitudinal_family_file.sav"
   out=long_fam
   dbms=spss;
 run;
    proc sort; by MCSID;
+
 
 * Merge;
    data outwt ina inb;
