@@ -24,6 +24,7 @@ libname analysis "L:\UK Project\Analysis Data\Data sets";
 					 APNETA00 APNETP00 APTAXC0A APTAXC0B APTAXC0C APGROA00 APGROP00 APSEPA00 APLFTE00 APACQU00
 					 ADWKST00 APSEMO00 APFRTI00 APDEAN00 APLOIL00 APNILP00 APNICO00);
 RUN;
+
 * Import parent derived data;
   proc import
   file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
@@ -46,7 +47,6 @@ run;
   data moms;
   set parent_info;
 	where ADDRES00 = 1; *18492 mothers;
-
 
 * Merge father's smoking;
   data fathers;
@@ -149,6 +149,8 @@ run;
   dbms=spss;
 run;
 
+proc sort data=parent_cm_interview NODUPKEY; by MCSID ACNUM00;
+run;
 	* Keep only the main parent response or partner only if main is missing;
 	  proc sort data=parent_cm_interview; by MCSID ACNUM00;
       data parent_cm_main;
@@ -178,10 +180,6 @@ run;
   if a and not b then output ina; 	   * 0 obs;
   if b and not a then output inb; 	   * 0 obs;
   run;
-
-proc contents data=child_info position;run;
-proc freq data=child_info;
-tables AELIG00 ARESP00;run;
 
 
 *-----* hhgrid *------*;
@@ -216,30 +214,10 @@ run;
   by MCSID;
   output outdat; 				  * 18,786 obs;
   if a and not b then output ina; * 0 obs;
-  if b and not a then output inb; * 48 obs, so 18,738 that match mother/child;1
+  if b and not a then output inb; * 48 obs, so 18,738 that match mother/child;
   run;
 
-
-*----* Geographically linked data *----*
-* Need for country of interview;
-  proc import
-  file="L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_geographically_linked_data.sav"
-  out=geodat
-  dbms=spss;
-run;
-	data geodat_tmp;
-	set geodat (keep=MCSID AACTRY00);
-	  proc sort data=geodat_tmp; by MCSID;
-
-* Merge with other data;
-  data outgeo ina inb;
-  merge outdat(in=a) geodat_tmp(in=b); 
-  by MCSID;
-  output outgeo;					* 18,798 obs; *outdat had 18786, geodat had 18552 but is family-level;
-  if a and not b then output ina;	* 0 obs;
-  if b and not a then output inb;	* 12 obs;
-run;
-
+proc contents data=outdat position; run;
 
 *-----* Longitudinal family file *---------*;
 * Need this for weights;
@@ -248,39 +226,20 @@ run;
   out=long_fam
   dbms=spss;
 run;
-   proc sort; by MCSID;
-
+   proc sort; by MCSID; 
 
 * Merge;
    data outwt ina inb;
-   merge outgeo(in=a) long_fam(in=b);
+   merge outdat(in=a) long_fam(in=b);
    by MCSID;
    if a and b then output outwt;
    if a and not b then output ina; * 0 obs;
-   if b and not a then output inb; * 691 obs;
+   if b and not a then output inb; * 703 obs;
   run;
 
 
-proc freq data=outwt;
-weight AOVWT2;
-tables AHCSEX00;
-run;
-
-*--* Check that it's a child level file;
-  data chk;
-  set outwt;
-  	*where MCSID=""; *none missing;
-     where ACNUM00=.; *457 missing -- 445 were in weights file, not other. 12 others?;
-
-	 proc print;
-	 var MCSID APNUM00 AELIG00 ARESP00 ACBAGE00;RUN;
-
- proc freq data=outwt;
-	tables APNUM00 AELIG00 ADDRES00; *477 missing, 457 of these the ones from the wts file, maybe other 20 were the ones no matched to parent interview. 505 missingn ADDRES00;
-	*where ACNUM00=.; run; 
-
 *---* Save output data set *---*;
-  data analysis.mother_child_2; *Note original data set did not have hhgrid or long_fam attached. Additionall only kept records in both mother and baby originally;
+  data analysis.mother_child_3; *Note original data set did not have hhgrid or long_fam attached. Additionall only kept records in both mother and baby originally;
   set outwt;
   run;
 
