@@ -12,28 +12,16 @@ PROC CONTENTS DATA=ANALYSIS.ANALYSIS_DAT_2;RUN;
 data dat1;
 set analysis.analysis_dat_2; 
 
-proc contents position;run;
-
-proc freq; tables APSEMO00--APTRDE00 /nopercent;RUN;
-proc freq; tables APDEAN00*APTRDE00 /MISSING;RUN;
-proc freq; tables AOVWT2;run;
-
-
-	/*Initial set: (keep=waz_recent wapct_recent APCUPR00--ADDAGI00 ADDACT00 ADDWRK00 ADDBMI00 ACNUM00-- ADERLT00 ADGEST00 ADAGLW00--APALIM00 AHCSEX00 pregnancy_smoke--wapct_birth
-									ADD06E00 education ADWKST00 hh_income see_parents see_friends BMI_Range APLOIL00 AOVWT2 Country); */
-
 	/* Keep vars needed for revised Table 1 */
-	   (keep=ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income BMI_Range ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent pregnancy_smoke ADBMIPRE AHCSEX00 APWTKG00 AOVWT2);
-	
-	/*proc freq data=dat1; tables NOCMHH ADD06E00 COUNTRY MARRIED EDUCATION HH_INCOME BMI_RANGE ACADMO00 APTRDE00 SEE_FRIENDS SEE_PARENTS AHCSEX00; RUN;*/
-	* Pregnancy_smoke will be the "by" variable, so check its distribution first...0:65%, 1-10:18.23%, >10:16.67% ;
-	  /* proc freq;
-	     tables pregnancy_smoke;
-	     run;
-	  */
+	   keep APLOIL00 ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression; * BMI of mother vars hadd too many missing (>1000)
 
+	* Drop obs with outlier Z scores and mothers 15 or younger;
+	   where abs(waz_recent) < 7  /* leaves 18,773 */ and
+	   		 abs(waz_birth) < 7   /* leaves 18,767 */ and
+			 ADDAGB00 >= 16		  /* leaves 18,663 */
+			 ;
 run;
-
+ 
 data dat2;
 set dat1;
 
@@ -44,14 +32,6 @@ set dat1;
 	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
 
   *Indicators for table 1;
-/*	If ADD06E00=1 then white=1; else if ADD06E00 ne . then white=0;
-	If ADD06E00=2 then mixed=1; else if ADD06E00 ne . then mixed=0;
-	If ADD06E00=3 then indian=1; else if ADD06E00 ne . then indian=0;
-	If ADD06E00=4 then pakistani_bangladeshi=1; else if ADD06E00 ne . then pakistani_bangladeshi=0;
-	If ADD06E00=5 then black_blackbrit=1; else if ADD06E00 ne . then black_blackbrit=0;
-	If ADD06E00=6 then other=1; else if ADD06E00 ne . then other=0;
-*/ 
-
 	white=.; mixed=.; indian=.; pakistani_bangladeshi=.; black_blackbrit=.; other=.;
 	If ADD06E00=1 then white=1; 
 	else If ADD06E00=2 then mixed=1; 
@@ -78,22 +58,37 @@ set dat1;
 	treat_mental=.; 
 	If APTRDE00=1 then treat_mental=1; Else if APTRDE00 ne . then treat_mental=0;
 
-
 	If see_parents=2 then see_parents=0; 
 	If see_friends=2 then see_friends=0;
 
 	male=.;
 	If AHCSEX00=1 then male=1;
 
-	retain pregnancy_smoke ADDAGB00 white--other england--northIreland married nvq_1_to_3--nvq_none_or_abroad hh_income ADBMIPRE health_probs treat_mental see_parents see_friends male APWTKG00 ADGEST00;
+	retain pregnancy_smoke ADDAGB00 white--other england--northIreland married nvq_1_to_3--nvq_none_or_abroad hh_income  health_probs treat_now_depression see_parents see_friends male  ADGEST00;
 
 	proc contents position;run;
 
-  * Get distributions overall and by pregnacny_smoke_grp;
+  * Get distributions overall ;
 	proc univariate data=dat2 outtable=table noprint;
 	proc print data=table;
 	var _VAR_ _NOBS_  _NMISS_ _MEAN_ _STD_ _MIN_ _MAX_;
+	title"";
 RUN;
+
+
+* Create Table 1;
+  proc sort data=dat2;
+  by pregnancy_smoke_grp;
+
+  proc univariate data=dat2 outtable=table1 noprint;
+  by pregnancy_smoke_grp;
+  proc print data=table1;
+  var _VAR_ pregnancy_smoke_grp _NOBS_ _MEAN_ _STD_;
+  run;
+
+  proc freq data=dat2;
+  tables pregnancy_smoke_grp*Married /missing;
+  run;
 
 
 

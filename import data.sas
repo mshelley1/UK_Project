@@ -190,12 +190,40 @@ run;
 	dbms=spss;
 run;
 
-    data hhgrid_tmp;
+	* Get natural mothers and how many kids they have;
+	  data hhgrid_moms;
+	  set hhgrid;
+		where AHPSEX00=2 and AHCREL00=7; * person sex is female and rel to CM is natural parent;
+
+		num_mom_kids_at_home=1; * We know they are parent to at least the cohor member;
+		array ahrel AHPRELA0--AHPRELK0; * Relationship to all others in household;
+
+		do i=1 to dim(ahrel);
+			if ahrel[i] = 7 then num_mom_kids_at_home=num_mom_kids_at_home+1; *If natural parent to anyone else, add one to kid count;
+		end;
+
+		keep MCSID  num_mom_kids_at_home;
+
+		proc sort data=hhgrid_moms; by MCSID;
+/*		PROC FREQ; TABLES  num_mom_kids_at_home;RUN; */
+run;
+
+    data hhgrid_cm;
 	set hhgrid (keep=MCSID ACNUM00 AHINTM00--AHCAGE00);
 		where MCSID ne "" and ACNUM00 ne .; *Keep only cohort members;
 
-	proc sort data=hhgrid_tmp;
+	proc sort data=hhgrid_cm;
 		by MCSID ACNUM00;
+
+	* Mrege hhgrid CMs with moms;
+		data hhgrid_tmp ina inb;
+		merge hhgrid_cm (in=a) hhgrid_moms(in=b);
+		by MCSID;
+		if a and not b then output ina;
+		if b and not a then output inb;
+		output hhgrid_tmp;
+		run;
+
 run;
 
 * Merge with other child info;

@@ -99,6 +99,9 @@ set analysis.mother_child_3;
 	  Else if ACAGSF00=4 then Age_First_Solid=ACSFMT00*30;
 	  Else if ACAGSF00=1 then Age_First_Solid=-1;
 
+run;
+proc freq; tables Any_Breast_Milk -- Age_First_Solid;run;
+
 *
 * Checks of created variables and other vars that need recoding;
 *;
@@ -136,6 +139,12 @@ set analysis.mother_child_3;
 	Else if 18.5 <= ADBMIPRE < 25 then BMI_Range=2; *healthy;
 	Else if 25 <= ADBMIPRE < 30 then BMI_Range=3;   *overweight;
 	Else if 30 <= ADBMIPRE then BMI_Range=4;		   *obese;
+  * Depression;
+	If APDEAN00 ne . then do;
+		If APTRDE00=1 then treat_now_depression = 1;
+		Else treat_now_depression = 0;
+	end;
+
 
 /*
 	proc freq;
