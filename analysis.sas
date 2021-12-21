@@ -13,12 +13,14 @@ data dat1;
 set analysis.analysis_dat_2; 
 
 	/* Keep vars needed for revised Table 1 */
-	   keep APLOIL00 ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression; * BMI of mother vars hadd too many missing (>1000)
+	   keep APLOIL00 ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent
+			pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Breast_Milk_Time--Age_First_Solid; * BMI of mother vars hadd too many missing (>1000)
 
-	* Drop obs with outlier Z scores and mothers 15 or younger;
+	* Drop obs with outlier Z scores and mothers 15 or younger and non-singletons;
 	   where abs(waz_recent) < 7  /* leaves 18,773 */ and
 	   		 abs(waz_birth) < 7   /* leaves 18,767 */ and
-			 ADDAGB00 >= 16		  /* leaves 18,663 */
+			 ADDAGB00 >= 16		  /* leaves 18,663 */ and
+			 ACNOBA00 ne 1 ;
 			 ;
 run;
  

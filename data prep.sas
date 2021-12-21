@@ -99,9 +99,6 @@ set analysis.mother_child_3;
 	  Else if ACAGSF00=4 then Age_First_Solid=ACSFMT00*30;
 	  Else if ACAGSF00=1 then Age_First_Solid=-1;
 
-run;
-proc freq; tables Any_Breast_Milk -- Age_First_Solid;run;
-
 *
 * Checks of created variables and other vars that need recoding;
 *;
@@ -144,50 +141,31 @@ proc freq; tables Any_Breast_Milk -- Age_First_Solid;run;
 		If APTRDE00=1 then treat_now_depression = 1;
 		Else treat_now_depression = 0;
 	end;
+  * Sum up probs in pregnancy;
+    Probs_in_pregnancy = n(of APILWM0A--APILWM0G);  * count of non-missing vars;
+  * Marital status recode;
+	If APFCIN00 in (2, 3) then Married = 1;
+	Else if APFCIN00 in (1, 4, 5, 6) then Married = 0;
+  * Weight;
+	birth_weight = ADBWGT00;
+	recent_weight = ADLSTW00; *missing for 542;
+	age_weighed = ADAGLW00; *missing for 743;
+  * Total number of kids mom has;
+    * APOTCH00 (any other kids not in hh) has 683 missing;
+
+*	total_mom_kids = num_mom_kids_at_home + ;
+
+	proc freq; tables APOTCH00*APOTCN00  /missing;run;
+	proc freq; tables ACNOBA00;run;
 
 
-/*
-	proc freq;
-		tables
-		/* Depression vars 
-			APLOSA00--APTRDE00 /*APTRDE00 has a lot of missings*/
-		/* Marital status 
-			APFCIN00 /*30 missing*/
-		/* Probs during preg 
-			APILPR00 /*41 missing*/
-		/* Currently preg 
-			APCUPR00 APPRMT00 /*92 and 17938 missing*/
-		/* Pay 
-			APNETA00 APNETP00 APGROA00 APGROP00 APSEPA00 pay_miss/*~4700 missing net, 7700 gross, 18K last year, 4625 both net&gross missing*/
-		/* Education 
-			APLFTE00 APACQU00 /* APVCQU00 not found; 119 missing APLFTE00, 76 missing*/ 
-		/* Weight/height 
-			APHEIG00 -- APWEIK00  
-			ADDBMI00 ADHGTM00 ADWGTK00;/*Weight vars missing for ~1000; height missing for ~300 */
-
-/*PROC UNIVARIATE; VAR ADDBMI00 ADHGTM00 ADWGTK00;run;*/
-
-/*PROC FREQ data=mother_child;
-TABLES ADD06E00 AACTRY00 ADACAQ00 ADWKST00 APSEMO00 APFRTI00 ADBMIPRE APLOIL00;RUN;
-
-proc contents position;
-run; 
-*/
-
-	Probs_in_pregnancy = n(of APILWM0A--APILWM0G);  * count of non-missing vars;
-	* Marital status recode;
-		If APFCIN00 in (2, 3) then Married = 1;
-		Else if APFCIN00 in (1, 4, 5, 6) then Married = 0;
-	* Weight;
-		birth_weight = ADBWGT00;
-		recent_weight = ADLSTW00; *missing for 542;
-		age_weighed = ADAGLW00; *missing for 743;
-
-	* Recodes to match macro for Z-scores of weight/height;
-		agedays=age_weighed;
-		If AHCSEX00=1 then sex=1; Else if AHCSEX00=2 then sex=2;
-		height=.;
+  * Recodes to match macro for Z-scores of weight/height;
+	agedays=age_weighed;
+	If AHCSEX00=1 then sex=1; Else if AHCSEX00=2 then sex=2;
+	height=.;
 run;
+
+proc contents position;run;
 
 *--------------------------*;
 * Z-scores;
