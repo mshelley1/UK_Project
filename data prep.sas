@@ -151,13 +151,14 @@ set analysis.mother_child_3;
 	recent_weight = ADLSTW00; *missing for 542;
 	age_weighed = ADAGLW00; *missing for 743;
   * Total number of kids mom has;
-    * APOTCH00 (any other kids not in hh) has 683 missing;
-
-*	total_mom_kids = num_mom_kids_at_home + ;
-
-	proc freq; tables APOTCH00*APOTCN00  /missing;run;
-	proc freq; tables ACNOBA00;run;
-
+    If APOTCH00 = 1 then total_mom_kids = num_mom_kids_at_home + APOTCN00; *APOTCH00 (any other kids not in hh) has 683 missing;
+	Else total_mom_kids = num_mom_kids_at_home;
+	parity=.;
+	If total_mom_kids ne . then do;
+		If total_mom_kids=1 then parity=0;
+		Else if total_mom_kids=2 then parity=1;
+		Else if total_mom_kids > 2 then parity=2;
+	end;
 
   * Recodes to match macro for Z-scores of weight/height;
 	agedays=age_weighed;
@@ -236,6 +237,8 @@ proc contents position;run;
 				see_parents="wheter has social support from parents (created from APSEMO00)"
 				see_friends="whether has social support from friends (created from APFRTI00)"
 				BMI_Range="1=underweight, 2=healthy, 3=overweight, 4=obese (created from ADBMIPRE)"
+				treat_now_depression="If mom ever diagnosed, is she currently being treated for depresison (created)"
+				total_mom_kids="Total number of natural kids of mom: num_mom_kids_at_home (+ APOTCN00 if not missing) (created)"
 				;
 				
 	proc contents position;run;
