@@ -10,11 +10,13 @@ options fmtsearch=(analysis.formats work);
 /*PROC CONTENTS DATA=ANALYSIS.ANALYSIS_DAT_2;RUN;*/
 
 data dat1;
-set analysis.analysis_dat_2; 
+set analysis.analysis_dat_3; 
 
 	/* Keep vars needed for revised Table 1 */
 	   keep APLOIL00 ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent
-			pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Breast_Milk_Time--Age_First_Solid total_mom_kids parity; * BMI of mother vars hadd too many missing (>1000)
+			pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Any_Breast_Milk Breast_Milk_Time--Age_First_Solid total_mom_kids parity
+			feed_type_6mos Breast_Milk_time_cat first_other_food_cat solid_grp formula_grp cowmilk_grp;
+			; * BMI of mother vars hadd too many missing (>1000)
 
 	* Drop obs with outlier Z scores and mothers 15 or younger and non-singletons;
 	   where abs(waz_recent) < 7  /* leaves 18,773 */ and
@@ -24,6 +26,11 @@ set analysis.analysis_dat_2;
 			 ;
 run;
  
+  proc freq; tables feed_type_6mos;run;
+	  proc freq; tables feed_type_6mos*(Breast_Milk_time_cat first_other_food_cat solid_grp formula_grp cowmilk_grp) /norow nocol nopercent missing; 
+
+
+
 data dat2;
 set dat1;
 
@@ -63,8 +70,6 @@ set dat1;
 
 	If AHCSEX00=1 then male=1; Else if AHCSEX00 ne . then male=0;
 
-	*retain pregnancy_smoke ADDAGB00 white--other england--northIreland married nvq_1_to_3--nvq_none_or_abroad hh_income  health_probs treat_now_depression see_parents see_friends male  ADGEST00;
-
   * Get distributions overall ;
 	proc univariate data=dat2 outtable=table noprint;
 	proc print data=table;
@@ -84,24 +89,7 @@ RUN;
 	  If parity=0 then Age_parity_0 = ADDAGB00; else Age_parity_0=.;
 	  If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
 
-	* Create categorical groups for Solid food;
-	  If Age_First_Solid=-1 then Age_First_Solid_cat = 99;
-	  Else if 0 <= Age_First_Solid <= 30 then Age_First_Solid_cat= 1;
-	  Else if 30 < Age_First_Solid <= 60 then Age_First_Solid_cat= 2;
-	  Else if 60 < Age_First_Solid <= 90 then Age_First_Solid_cat= 3;
-	  Else if 90 < Age_First_Solid <= 120 then Age_First_Solid_cat= 4;
-	  Else if 120 < Age_First_Solid <= 150 then Age_First_Solid_cat= 5;
-	  Else if 150 < Age_First_Solid <= 180 then Age_First_Solid_cat= 6;
-	  Else if 180 < Age_First_Solid <= 210 then Age_First_Solid_cat= 7;
-	  Else if 210 < Age_First_Solid <= 240 then Age_First_Solid_cat= 8;
-	  Else if 240 < Age_First_Solid <= 270 then Age_First_Solid_cat= 9;
-	  Else if 270 < Age_First_Solid <= 300 then Age_First_Solid_cat= 10;
-	  Else if 300 < Age_First_Solid <= 330 then Age_First_Solid_cat= 11;
-
-
-	  proc freq; tables Age_First_Solid_Cat;run;
-
-
+run;
 
 * Get stats (Table 1);
   proc sort data=table1_dat;

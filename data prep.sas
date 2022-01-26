@@ -66,7 +66,7 @@ set analysis.mother_child_3;
 
 	* Determine length of breastfeeding in days;
 	  If ACBFEV00=2 OR ACBFEA00=1 then Any_Breast_Milk=0;
-	  Else if ACBFEV00=1 and ACBFEA00 >=2 then Any_Breast_Milk=1;
+	  Else if ACBFEV00=1 and ACBFEA00 >=2 then Any_Breast_Milk=1;  *682 missing ACBFEV00;
 
 	  If Any_Breast_Milk=1 then do;
 		If ACBFEA00=2 then Breast_Milk_Time=0.5;
@@ -99,7 +99,52 @@ set analysis.mother_child_3;
 	  Else if ACAGSF00=4 then Age_First_Solid=ACSFMT00*30;
 	  Else if ACAGSF00=1 then Age_First_Solid=-1;
 
-*
+
+	/* Feeding Variables */
+	* Create categorical groups for food types;
+	  If Age_First_Solid=-1 then Age_First_Solid_cat = 99;
+	  Else Age_First_Solid_cat = floor(Age_First_Solid/30);
+/*		If          Age_First_Solid_cat <=3 then solid_grp = 1;
+		Else if 3 < Age_First_Solid_cat <=5 then solid_grp=2;
+		Else if 5 <= Age_First_Solid_cat then solid_grp=3;
+*/	  
+	  If Age_First_Formula=-1 then Age_First_Formula_cat = 99;
+	  Else Age_First_Formula_cat = floor(Age_First_Formula/30);
+/*		If          Age_First_Formula_cat <=3 then Formula_grp = 1;
+		Else if 3 < Age_First_Formula_cat <=5 then Formula_grp=2;
+		Else if 5 <= Age_First_Formula_cat then Formula_grp=3;
+*/  
+	  If Age_First_CowMilk=-1 then Age_First_CowMilk_cat = 99;
+	  Else Age_First_CowMilk_cat = floor(Age_First_CowMilk/30);
+/*		If          Age_First_CowMilk_cat <=3 then CowMilk_grp = 1;
+		Else if 3 < Age_First_CowMilk_cat <=5 then CowMilk_grp=2;
+		Else if 5 <= Age_First_CowMilk_cat then CowMilk_grp=3;
+*/
+*	  first_other_food_cat = min(of solid_grp, formula_grp, cowmilk_grp);
+	  first_other_food_cat = min(of Age_First_Solid_cat, Age_First_Formula_cat, Age_First_CowMilk_cat);
+
+	* Create categorical groups for breast feeding;
+	  If Breast_Milk_Time=0 then Breast_Milk_Time_cat = 0;
+	  Else Breast_Milk_Time_cat = floor(Breast_Milk_Time/30);
+
+		/*proc freq; tables Any_Breast_Milk * Breast_Milk_Time_cat Breast_Milk_Time_cat*first_other_food_cat /norow nocol nopercent
+	  	 proc freq; tables breast_milk_time_cat * Age_first_solid_cat /norow nocol nopercent missing; */
+
+	* Overall feeding categories: exclusive breast fed, exclusive formula, mixed;
+*	  If Breast_Milk_Time_cat >= 6 and first_other_food_cat >= 3 then feed_type_6mos = "Exclusive breast fed"; *Only 193 this way;
+	  If Breast_Milk_Time > 0 and first_other_food_cat >= 6  then feed_type_6mos = "Exclusive breast fed"; * Only 212 this way;
+	  Else if Breast_Milk_Time_cat = 0 and first_other_food_cat < 6 then feed_type_6mos = "No breast feeding";
+	  Else feed_type_6mos="Mixed";
+/*
+	  proc freq; tables feed_type_6mos;run;
+	  proc freq; tables feed_type_6mos*(Breast_Milk_time_cat age_first_solid_cat age_first_cowmilk_cat first_other_food_cat) /norow nocol nopercent missing;
+	  proc freq;
+	  	where age_first_solid_Cat = .;
+	  tables breast_milk_time;
+	  proc freq; tables ACBFEV00*ACBFEA00 /missing;
+run;
+*/
+	  *
 * Checks of created variables and other vars that need recoding;
 *;
 	/* proc univariate;
@@ -243,11 +288,7 @@ proc contents position;run;
 				
 	proc contents position;run;
 
-	data analysis.analysis_dat_2; *Note Analysis_Dat was originally created from this program, dropping many unneeded variables. Went back to add hhggrid, family_long, others. Keeping all vars this time;
+	data analysis.analysis_dat_3; *Added in additional info/classifications on feeding;
 	set analysis_dat;
 run;
 proc contents position;run;
-
-proc freq;
-tables 
-				
