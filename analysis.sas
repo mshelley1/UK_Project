@@ -10,12 +10,12 @@ options fmtsearch=(analysis.formats work);
 /*PROC CONTENTS DATA=ANALYSIS.ANALYSIS_DAT_2;RUN;*/
 
 data dat1;
-set analysis.analysis_dat_3; 
+set analysis.analysis_dat_3;
 
 	/* Keep vars needed for revised Table 1 */
 	   keep APLOIL00 ADDAGB00 NOCMHH ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent
-			pregnancy_smoke AHCSEX00 AOVWT2 ADBWGT00 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Any_Breast_Milk Breast_Milk_Time--Age_First_Solid total_mom_kids parity
-			feed_type_6mos Breast_Milk_time_cat first_other_food_cat solid_grp formula_grp cowmilk_grp;
+			pregnancy_smoke AHCSEX00 AOVWT2 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Any_Breast_Milk Breast_Milk_Time--Age_First_Solid total_mom_kids parity
+			feed_type_3mos Breast_Milk_time_cat first_other_food_cat birth_weight recent_weight ACBAGE00;
 			; * BMI of mother vars hadd too many missing (>1000)
 
 	* Drop obs with outlier Z scores and mothers 15 or younger and non-singletons;
@@ -23,14 +23,7 @@ set analysis.analysis_dat_3;
 	   		 abs(waz_birth) < 7   /* leaves 18,767 */ and
 			 ADDAGB00 >= 16		  /* leaves 18,663 */ and
 			 ACNOBA00 ne 2 ;
-			 ;
 run;
- 
-  proc freq; tables feed_type_6mos;run;
-	  proc freq; tables feed_type_6mos*(Breast_Milk_time_cat first_other_food_cat solid_grp formula_grp cowmilk_grp) /norow nocol nopercent missing; 
-
-
-
 data dat2;
 set dat1;
 
@@ -63,25 +56,45 @@ set dat1;
 	else if EDUCATION=2 then nvq_4_to_5=1;
 	else if EDUCATION=9 then nvq_none_or_abroad=1;
 
-	If APLOIL00 > 0 then health_probs=1; Else if APLOIL00 ne . then health_probs=0;
+	health_probs=.;
+	If APLOIL00 =1 then health_probs=1;
+	Else if APLOIL00 =2 then health_probs=0;
 
 	If see_parents=2 then see_parents=0; 
 	If see_friends=2 then see_friends=0;
 
 	If AHCSEX00=1 then male=1; Else if AHCSEX00 ne . then male=0;
 
+	If feed_type_3mos="" then do; mo3_breast_only=.; mo3_mixed=.; mo3_nobreast=.;end;
+	Else do; mo3_breast_only=0; mo3_mixed=0; mo3_nobreast=0; end;
+	If feed_type_3mos="Exclusive breast fed" then mo3_breast_only=1;
+	else if feed_type_3mos="Mixed" then mo3_mixed=1;
+	else if feed_type_3mos="No breast feeding" then mo3_nobreast=1;
+
+	If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
+	Else Age_First_solid=Age_First_Solid/30;
+
+
+* Weight change vars;
+	wt_change = recent_weight - birth_weight;
+	waz_change = waz_recent - waz_birth;
+
+drop ACNOBA00 feed_type_3mos NOCMHH Any_Breast_Milk Breast_Milk_Time Age_First_Formula Age_First_CowMilk Age_First_OthMilk first_other_food_cat Breast_Milk_Time_cat ACBAGE00;
+run;
+
   * Get distributions overall ;
 	proc univariate data=dat2 outtable=table noprint;
 	proc print data=table;
 	var _VAR_ _NOBS_  _NMISS_ _MEAN_ _STD_ _MIN_ _MAX_;
 	title"";
+	proc contents data=dat2 position;
 RUN;
 
 
 *-----* Create anayltic sample *----;
 * Remove vars with lots and obs with any missings;
   data table1_dat;
-  set dat2 (drop=APLOIL00 -- APTRDE00 ADD06E00 ACADMO00--COUNTRY pregnancy_smoke education see_parents Age_First_othmilk);
+  set dat2 (drop=APLOIL00 -- APTRDE00 ADD06E00 ACADMO00--COUNTRY pregnancy_smoke education see_parents);
   	* Drop rows with any missing vars;
   	  if cmiss(of _all_) then delete;	
 
@@ -145,8 +158,7 @@ run;
 			drop pregnancy_smoke_grp;
 			proc sort; by _VAR_;	run;
 
-
-		proc contents data=table1 position out=cont;proc print data=cont;run;
+		proc contents data=table1_dat position out=cont;proc print data=cont;run;
 		data names;
 		set cont (keep=NAME Label);
 			rename NAME=_VAR_;
@@ -178,9 +190,17 @@ run;
 					if _VAR_ = 'treat_now_depression' then sort_num=21;
 					if _VAR_ = 'see_friends' then sort_num=22;
 					if _VAR_ = 'male' then sort_num=23;
-					if _VAR_ = 'ADGEST00' then sort_num=24;
+					if _VAR_ = 'ADGEST00' then sort_num=23.01;
+					if _VAR_ = 'Age_First_Solid' then sort_num=23.1;
+					if _VAR_ = 'mo3_breast_only' then sort_num=23.2;
+					if _VAR_ = 'mo3_mixed' then sort_num=23.3;
+					if _VAR_ = 'mo3_nobreast' then sort_num=23.4;
+					if _VAR_ = 'birth_weight' then sort_num=24;
+					if _VAR_ = 'recent_wegiht' then sort_num=24.1;
+					if _VAR_ = 'wt_change' then sort_num=24.2;
 					if _VAR_ = 'waz_birth' then sort_num=25;
 					if _VAR_ = 'waz_recent' then sort_num=26;
+					if _var_ = 'waz_change' then sort_num=27;
 			if sort_num ne .;
 			proc sort; by sort_num;
 			proc print data=table_out;
