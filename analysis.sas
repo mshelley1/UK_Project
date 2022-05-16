@@ -203,7 +203,8 @@ run;
 *------------------*;
 
  data model_dat2;
- set model_dat (drop=pregnancy_smoke total_mom_kids); 
+ *set model_dat (drop=pregnancy_smoke total_mom_kids); 
+ set table1_dat;
 	* Combine age_parity into a single variable;
 		If age_parity_0 ne . then age_parity=age_parity_0;
 		Else if age_parity_gt0 ne . then age_parity=age_parity_gt0;
@@ -255,25 +256,24 @@ run;
 *
 *-------------------------------------------------------------------------------------*;
 
+proc contents data=table1_dat position;run;
+proc contents data=analysis.model_dat position;run;
+
 data model_dat;
 set analysis.model_dat
-	(keep=MCSID pttype2 sptn00 aovwt2 waz_change pregnancy_smoke_grp ADDAGB00 ADGEST00 ACADMO00 parity d_illness--d_seeFriends Married);
+	(keep=MCSID pttype2 sptn00 aovwt2 waz_change pregnancy_smoke_grp ADDAGB00 ADGEST00 ACADMO00 parity d_illness--d_seeFriends Married treat_now_depression);
 
 data model_dat2;
 	retain MCSID pttype2 sptn00 aovwt2 waz_change pregnancy_smoke_grp ADDAGB00 ADGEST00 ACADMO00 parity
-			d_illness d_depression d_nonwhite d_female d_otherUK d_noBreast_3mos d_degree d_income d_seeFriends Married;
+			d_illness d_depression d_nonwhite d_female d_otherUK d_noBreast_3mos d_degree d_income d_seeFriends Married treat_now_depression;
 set model_dat;
 run;
 proc contents position;run;
 	
 	PROC SURVEYREG data=model_dat2;	
-	model waz_change=pregnancy_smoke_grp -- Married;
+	model waz_change=pregnancy_smoke_grp -- treat_now_depression;
 	strata  pttype2;
 	cluster  MCSID sptn00;
 	weight  aovwt2;
 
 run;
-
-proc freq data=model_Dat; tables nh2;run;
-
-proc contents data=analysis.model_dat;run;
