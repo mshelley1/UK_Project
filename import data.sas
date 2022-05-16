@@ -12,13 +12,9 @@ libname analysis "L:\UK Project\Analysis Data\Data sets";
 * Import parent interview data - 31,734 obs, 664 variables;
   proc import
   file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
-  out = spss_dat
+  out = parent_interview
   dbms=spss;
   run;
-* Keep needed variables from parent_interview;
-  data parent_interview;
-  set spss_dat;
-RUN;
 
 * Import parent derived data;
   proc import
