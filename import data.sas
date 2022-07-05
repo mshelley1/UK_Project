@@ -39,6 +39,13 @@ run;
   set parent_info;
 	where ADDRES00 = 1; *18492 mothers;
 
+	* Check freqs for mom's depression and anxiety var;
+	  proc freq;
+	  tables APILPR00 APILWM0A APDIFC0A APLOSA00 APDEAN00 APTRDE00 APDEPR00 APPESH00
+			 APTIRE00 APRAGE00 APNERV00 APWORR00 APSCAR00 APUPSE00 APKEYD00 APHERA00
+			 APRULI00 APWALI00;
+run;
+
 * Merge father's smoking;
   data fathers;
   set parent_info (keep=MCSID ADDRES00 APSMUS0A);

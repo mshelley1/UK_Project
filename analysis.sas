@@ -269,11 +269,21 @@ data model_dat2;
 set model_dat;
 run;
 proc contents position;run;
-	
+
+* First model;	
 	PROC SURVEYREG data=model_dat2;	
 	model waz_change=pregnancy_smoke_grp -- treat_now_depression;
 	strata  pttype2;
 	cluster  MCSID sptn00;
 	weight  aovwt2;
 
+* Just preg_smoke_grp;
+	PROC SURVEYREG data=model_dat2;	
+	model waz_change=pregnancy_smoke_grp;
+	strata  pttype2;
+	cluster  MCSID sptn00;
+	weight  aovwt2;
+
+run;
+proc freq; tables pregnancy_smoke_grp;run;
 run;
