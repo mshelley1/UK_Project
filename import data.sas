@@ -6,19 +6,18 @@
 * Results in mother_child data sets.
 *
 ;
-
-libname analysis "L:\UK Project\Analysis Data\Data sets";
+libname analysis "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Analysis Data\Data sets";
 
 * Import parent interview data - 31,734 obs, 664 variables;
   proc import
-  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
+  file = "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_interview.sav"
   out = parent_interview
   dbms=spss;
   run;
 
 * Import parent derived data;
   proc import
-  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
+  file = "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_derived.sav"
   out = parent_derived
   dbms=spss; 
 
@@ -38,14 +37,7 @@ run;
   data moms;
   set parent_info;
 	where ADDRES00 = 1; *18492 mothers;
-
-	* Check freqs for mom's depression and anxiety var;
-	  proc freq;
-	  tables APILPR00 APILWM0A APDIFC0A APLOSA00 APDEAN00 APTRDE00 APDEPR00 APPESH00
-			 APTIRE00 APRAGE00 APNERV00 APWORR00 APSCAR00 APUPSE00 APKEYD00 APHERA00
-			 APRULI00 APWALI00;
-run;
-
+	
 * Merge father's smoking;
   data fathers;
   set parent_info (keep=MCSID ADDRES00 APSMUS0A);
@@ -133,7 +125,7 @@ run;
 *-----* Child Data *-----*;
 * Import cohort member derived data - 18,786 obs;
   proc import
-  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_cm_derived.sav"
+  file = "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_cm_derived.sav"
   out = cm_derived
   dbms=spss;
   run;
@@ -142,7 +134,7 @@ run;
 *----* Parent Interview Data *----*;
 * Import parent interview about cohort member - 32,165 obs;
   proc import
-  file = "L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_cm_interview.sav"
+  file = "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_parent_cm_interview.sav"
   out = parent_cm_interview
   dbms=spss;
 run;
@@ -183,7 +175,7 @@ run;
 *-----* hhgrid *------*;
 * Need for CM sex, dob;
 	proc import
-	file="L:\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_hhgrid.sav"
+	file="\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_hhgrid.sav"
 	out=hhgrid
 	dbms=spss;
 run;
@@ -248,7 +240,7 @@ proc contents data=outdat position; run;
 *-----* Longitudinal family file *---------*;
 * Need this for weights;
   proc import
-  file="L:\UK Project\Data Downloads\UKDA-8172-spss\spss\spss25\mcs_longitudinal_family_file.sav"
+  file="\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-8172-spss\spss\spss25\mcs_longitudinal_family_file.sav"
   out=long_fam
   dbms=spss;
 run;
@@ -263,11 +255,31 @@ run;
    if b and not a then output inb; * 703 obs;
   run;
 
-  proc freq data=outwt; tables num_mom_kids_at_home;run;
+/*  proc freq data=outwt; tables num_mom_kids_at_home;run;*/
+
+
+*-----* Family Derived file *---------*;
+* Need this for poverty measure;
+  proc import
+  file="\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Data Downloads\UKDA-4683-spss First Survey\UKDA-4683-spss\spss\spss25\mcs1_family_derived.sav"
+  out=fam_derived
+  dbms=spss;
+run;
+   proc sort; by MCSID; 
+run;
+
+* Merge;
+   data outall ina inb;
+   merge outwt(in=a) fam_derived(in=b);
+   by MCSID;
+   if a and b then output outall;
+   if a and not b then output ina; 
+   if b and not a then output inb; 
+  run;
 
 *---* Save output data set *---*;
-  data analysis.mother_child_3; *Note original data set did not have hhgrid or long_fam attached. Additionall only kept records in both mother and baby originally;
-  set outwt;
+  data analysis.mother_child_3; 
+  set outall;
   run;
 
 

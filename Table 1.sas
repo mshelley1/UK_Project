@@ -1,68 +1,15 @@
-*
-* Run analyses on data set created in "data prep.sas"
-*;
 
-libname analysis "L:\UK Project\Analysis Data\Data sets";
-
-proc format library=analysis.formats;
-options fmtsearch=(analysis.formats work);
-
-/*PROC CONTENTS DATA=ANALYSIS.ANALYSIS_DAT_2;RUN;*/
-
-data dat1;
-set analysis.analysis_dat_3;
-
-	/* Keep vars needed for revised Table 1 */
-	   keep APLOIL00 ADDAGB00 ADD06E00 COUNTRY Married education hh_income ACADMO00 APTRDE00 see_friends see_parents ADGEST00 waz_birth waz_recent
-			pregnancy_smoke AHCSEX00 AOVWT2 APDEAN00 APTRDE00 treat_now_depression ACNOBA00 Age_First_Solid total_mom_kids parity
-			feed_type_3mos birth_weight recent_weight ACBAGE00
-			pttype2 MCSID nh2 sptn00;
-			; * BMI of mother vars hadd too many missing (>1000)
-
-	* Drop obs with outlier Z scores and mothers 15 or younger and non-singletons;
-	   where abs(waz_recent) < 7  /* leaves 18,773 */ and
-	   		 abs(waz_birth) < 7   /* leaves 18,767 */ and
-			 ADDAGB00 >= 16		  /* leaves 18,663 */ and
-			 ACNOBA00 ne 2 ;
-run;
-data dat2;
-set dat1;
-
-  * Group pregnancy_smoke;
-	pregnancy_smoke_grp=.;
-	If pregnancy_smoke = 0 then pregnancy_smoke_grp=1;
-	Else if 0 < pregnancy_smoke <= 10 then pregnancy_smoke_grp=2;
-	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
-
- * Create a few additional that were missed;
-	If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
-	Else Age_First_solid=Age_First_Solid/30;
-
-	If parity=0 then Age_parity_0 = ADDAGB00; else Age_parity_0=.;
-	If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
-
-	wt_change = recent_weight - birth_weight;
-	waz_change = waz_recent - waz_birth;
-run;
-
-  * Get distributions overall ;
-	proc univariate data=dat2 outtable=table noprint;
-	proc print data=table;
-	var _VAR_ _NOBS_  _NMISS_ _MEAN_ _STD_ _MIN_ _MAX_;
-	title"";
-	proc contents data=dat2 position;
-	proc print data=table;run;
+*********************************************************************************************************;
+* Will need to come back to this when models are decided to run descriptives for the vars selected;
+* Code below was first pass based on initial set of vars. Can be refactored/adapted for final set
+*************************************************************************************************************;
 
 
-*---* Create data set to be used in regression *-----*
-* Remove vars with lots of missings;
-  data model_dat;
-  set dat2 (drop=age_first_solid  ACNOBA00 ACBAGE00 APTRDE00 see_parents);
 
-run;
+
 *-----* Create anayltic sample for Table 1 *----;
 * For table 1, need to also drop obs with any missings;
-  data table1_dat;
+  data table1_dat;  *16728 obs*;
   set model_dat (drop=age_parity_0 age_parity_gt0); * Have to drop and recreate these after getting rid of other missing obs since missing is valid depending on parity value;
 
   	* Drop rows with any missing vars;
@@ -196,94 +143,3 @@ run;
 	ods excel file = "L:\UK Project\Exploratory results\Table 1.xlsx" options(sheet_interval='none') ;
 	%cat_tbl1;
 	ods excel close;
-
-
-*------------------*;
-* Model			   *;
-*------------------*;
-
- data model_dat2;
- *set model_dat (drop=pregnancy_smoke total_mom_kids); 
- set table1_dat;
-	* Combine age_parity into a single variable;
-		If age_parity_0 ne . then age_parity=age_parity_0;
-		Else if age_parity_gt0 ne . then age_parity=age_parity_gt0;
-
-	* Create dummies - treat_now_depression, married go in as-is b/c already 0/1s;
- 		*proc freq;
-		*tables APLOIL00 APDEAN00 ADD06E00 AHCSEX00 COUNTRY feed_type_3mos education hh_income see_friends treat_now_depression Married parity;
-		*format _All_;
-
-		IF APLOIL00=1 then d_illness=1;
-		Else if APLOIL00=2 then d_illness=0;
-
-		If APDEAN00=1 then d_depression=1;
-		Else if APDEAN00=2 then d_depression=0;
-
-		If ADD06E00=1 then d_nonwhite=0;
-		Else if ADD06E00 ne . then d_nonwhite=1;
-
-		If AHCSEX00=1 then d_female=0;
-		Else if AHCSEX00=2 then d_female=1;
-
-		If COUNTRY=1 then d_otherUK=0;
-		Else if COUNTRY ne . then d_otherUK=1;
-
-		If feed_type_3mos="No breast feeding" then d_noBreast_3mos=1;
-		Else if feed_type_3mos ne "" then d_noBreast_3mos=0;
-
-		If education in (1,2) then d_degree=1;
-		Else if education=9 then d_degree=0;
-		
-		If hh_income=1 then d_income=1;
-		Else if hh_income in (2,3,4) then d_income=0;
-
-		If see_friends=1 then d_seeFriends=1;
-		Else if see_friends=2 then d_SeeFriends=0;
-
-run;
-
-
-* Save data set for models;
-  data analysis.model_dat;
-  set model_dat2;
-
-  run;
-
-*-------------------------------------------------------------------------------------*
-*
-* Regressions
-*
-*-------------------------------------------------------------------------------------*;
-
-proc contents data=table1_dat position;run;
-proc contents data=analysis.model_dat position;run;
-
-data model_dat;
-set analysis.model_dat
-	(keep=MCSID pttype2 sptn00 aovwt2 waz_change pregnancy_smoke_grp ADDAGB00 ADGEST00 ACADMO00 parity d_illness--d_seeFriends Married treat_now_depression);
-
-data model_dat2;
-	retain MCSID pttype2 sptn00 aovwt2 waz_change pregnancy_smoke_grp ADDAGB00 ADGEST00 ACADMO00 parity
-			d_illness d_depression d_nonwhite d_female d_otherUK d_noBreast_3mos d_degree d_income d_seeFriends Married treat_now_depression;
-set model_dat;
-run;
-proc contents position;run;
-
-* First model;	
-	PROC SURVEYREG data=model_dat2;	
-	model waz_change=pregnancy_smoke_grp -- treat_now_depression;
-	strata  pttype2;
-	cluster  MCSID sptn00;
-	weight  aovwt2;
-
-* Just preg_smoke_grp;
-	PROC SURVEYREG data=model_dat2;	
-	model waz_change=pregnancy_smoke_grp;
-	strata  pttype2;
-	cluster  MCSID sptn00;
-	weight  aovwt2;
-
-run;
-proc freq; tables pregnancy_smoke_grp;run;
-run;

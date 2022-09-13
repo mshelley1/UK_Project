@@ -11,7 +11,11 @@ options fmtsearch=(analysis.formats work);
 
 data mother_child;
 set analysis.mother_child_3;
-* Classify mothers' prenatal smoking
+
+/*--------------*
+ * Smoking Vars *
+ *--------------*/
+* mothers' prenatal smoking
 * Smoking var info:
 	 * APSMUS0A	- First type of tobacco product, current smoking;
 	 * thru APMUS0D (fourth type of current smoking);
@@ -40,8 +44,11 @@ set analysis.mother_child_3;
 	 proc print; var APSMUS0A APSMTY00 APSMCH00 APCIPR00 APCICH00; where pregnancy_smoke=. and  smoking_miss ne 1;run;
 */
 
-* Classify feeding type;
-* Feeding variables:
+
+/*--------------*
+ * Feeding Type *
+ *--------------*/
+ * Feeding variables:
 	  * ACBFEV00 - Ever tried to breastfeed (1=yes, 2=no);
 	  * ACBFEA00 - Age when CM last had breast milk (1=never, 2=<1day, 3=ans in days, 4=ans in wks, 5=ans in mos, 6=still bf);
 	  * ACBFED00 - Age in days when CM last had breast milk;
@@ -99,7 +106,6 @@ set analysis.mother_child_3;
 	  Else if ACAGSF00=4 then Age_First_Solid=ACSFMT00*30;
 	  Else if ACAGSF00=1 then Age_First_Solid=-1;
 
-
 	/* Feeding Variables */
 	* Create categorical groups for food types;
 	  If Age_First_Solid=-1 then Age_First_Solid_cat = 99;
@@ -116,7 +122,6 @@ set analysis.mother_child_3;
 	* Create categorical groups for breast feeding;
 	  If Breast_Milk_Time=0 then Breast_Milk_Time_cat = 0;
 	  Else Breast_Milk_Time_cat = floor(Breast_Milk_Time/30);
-
 		/*proc freq; tables Any_Breast_Milk * Breast_Milk_Time_cat Breast_Milk_Time_cat*first_other_food_cat /norow nocol nopercent
 	  	 proc freq; tables breast_milk_time_cat * Age_first_solid_cat /norow nocol nopercent missing; */
 
@@ -125,22 +130,39 @@ set analysis.mother_child_3;
 	  Else if Breast_Milk_Time_cat = 0 and first_other_food_cat < 3 then feed_type_3mos = "No breast feeding";
 	  Else feed_type_3mos="Mixed";
 
-/*	  proc freq; tables age_first_formula_cat*(age_first_cowmilk_cat age_first_solid_cat) /norow nocol nopercent missing;where feed_type_3mos="No breast feeding";run; */
+/*-----------------------------*
+ * Depression, stress, anxiety *
+ *-----------------------------*/
+   * Depression vars;
+		DESYMP1=.; DESYMP2=.; DESYMP3=.; DESYMP4=.; DESYMP5=.; TOTDESYMP=.;
+		If APDIFC0A in (61) then DESYMP1=1; Else if APDIFC0A ne . then DESYMP1=0;
+		If APLOSA00=1 then DESYMP2=1; Else if APLOSA00 ne . then DESYMP2=0;
+		If APDEPR00=1 then DESYMP3=1; Else if APDEPR00 ne . then DESYMP3=0;
+		If APPESH00=1 then DESYMP4=1; Else if APPESH00 ne . then DESYMP4=0;
+		If APRULI00=2 then DESYMP5=1; Else if APRULI00 ne . then DESYMP5=0;
+		TOTDESYMP=sum(DESYMP2--DESYMP5); *DEP1 didn't load on the factor - see "check depression vars.sas";
+	* Anxiety vars;
+		ANXSYMP1=.; ANXSYMP2=.; ANXSYMP3=.; ANXSYMP4=.; ANXSYMP5=.; TOTANXSYMP=.;
+		If APWORR00=1 then ANXSYMP1=1; else if APWORR00 ne . THEN ANXSYMP1=0;
+		If APSCAR00=1 then ANXSYMP2=1; else if APSCAR00 ne . THEN ANXSYMP2=0;
+		If APUPSE00=1 then ANXSYMP3=1; else if APUPSE00 ne . THEN ANXSYMP3=0;
+		If APKEYD00=1 then ANXSYMP4=1; else if APKEYD00 ne . THEN ANXSYMP4=0;
+		If APHERA00=1 then ANXSYMP5=1; elsE if APHERA00 ne . THEN ANXSYMP5=0;
+		TOTANXSYMP=sum(ANXSYMP2--ANXSYMP5); *Anx1 didn't load on the factor - see "check depression vars.sas";
+	* Stress vars;
+		STRSYMP1=.; STRSYMP2=.; STRSYMP3=.; TOTSTRSYMP=.;
+		If APTIRE00=1 then STRSYMP1=1; else if APTIRE00 ne . THEN STRSYMP1=0;
+		If APRAGE00=1 then STRSYMP2=1; else if APRAGE00 ne . THEN STRSYMP2=0;
+		If APNERV00=1 then STRSYMP3=1; else if APNERV00 ne . THEN STRSYMP3=0;
+		TOTSTRSYMP=sum(STRSYMP2--STRSYMP3); *Str1 didn't load on the factor - see "check depression vars.sas";
 
+	DepStrAnxScale=TOTDESYMP+TOTANXSYMP+TOTSTRSYMP;
 
-/*	  proc freq; tables feed_type_3mos;run;
-	  proc freq; tables feed_type_3mos*(Breast_Milk_time_cat age_first_solid_cat age_first_cowmilk_cat first_other_food_cat) /norow nocol nopercent missing;
-*/	 /* proc freq; tables ACBFEV00*ACBFEA00 /missing; */
+/*-----------------------------*
+ * Other recodes               *
+ *-----------------------------*/
 
-* Checks of created variables and other vars that need recoding;
-*;
-	/* proc univariate;
-	  var Breast_Milk_Time--Age_First_Solid;
-	  var ACBAGE00;
-	  histogram; 
-	  run; */
-
-  * Look for substitutes;
+  * Imcome/pay type;
 	If APNETA00=. and APGROA00=. then pay_miss="both";
 	Else if APNETA00=. and APGROA00 ne . then pay_miss="net";
     Else if APNETA00 ne . and APGROA00=. then pay_miss="gross";
@@ -210,25 +232,25 @@ proc contents position;run;
 		agedays=age_weighed; *for recent weight;
 
 	%include "L:\UK Project\Code\UK_Project\WHO-source-code.sas";
-	proc contents data=_whodata position;run;
-	proc univariate data=_whodata; var waz; histogram waz;title "recent weight for age z";run;
+*	proc contents data=_whodata position;run;
+/*	proc univariate data=_whodata; var waz; histogram waz;title "recent weight for age z";run;*/
 
 	data recent;
-	set _whodata(drop=haz--tsfz bmipct--tsfpct whz--_bivhigh agedays rename=(waz=waz_recent wapct=wapct_recent weight=recent_weight));
+	set _whodata(keep=sex wapct waz weight MCSID--parity rename=(waz=waz_recent wapct=wapct_recent weight=recent_weight));
+
+run;
+
 
 * Birth weight;
 	data mydata;
 	set mother_child (rename=(birth_weight=weight));
 		  agedays=0; * agedays should be 0 since at birth;
-	
-		* Drop addiitonal vars carried along in data set since they are already in the first _whodata run;
-		  drop APNUM00--ADDBMI00 ADBWGT00--married recent_weight age_weighed;
-
+			
 	%include "L:\UK Project\Code\UK_Project\WHO-source-code.sas";
-	proc univariate data=_whodata; var waz; histogram waz;title "birth weight for age z";run;
+/*	proc univariate data=_whodata; var waz; histogram waz;title "birth weight for age z";run;*/
 
 	data birth;
-	set _whodata(drop=sex--tsfz bmipct--tsfpct whz--_bivhigh agedays rename=(waz=waz_birth wapct=wapct_birth weight=birth_weight));
+	set _whodata(keep=wapct waz weight MCSID ACNUM00 rename=(waz=waz_birth wapct=wapct_birth weight=birth_weight));
 	run;
 		
 * Merge;
@@ -241,10 +263,12 @@ proc contents position;run;
    
   run;
 
+proc contents position;run;
+
 
 * Label, clean up and save;
 	data analysis_dat;
-	set out (drop=sex bmi height)  ;
+	set out ;
 
 		label 	waz_recent="weight-for-age z based on most recent weight (WHO macro)"
 				wapct_recent="weight-for-age percentile based on most recent weight (WHO macro)"
@@ -271,11 +295,34 @@ proc contents position;run;
 				BMI_Range="1=underweight, 2=healthy, 3=overweight, 4=obese (created from ADBMIPRE)"
 				treat_now_depression="If mom ever diagnosed, is she currently being treated for depresison (created)"
 				total_mom_kids="Total number of natural kids of mom: num_mom_kids_at_home (+ APOTCN00 if not missing) (created)"
-				;
+				Age_First_Solid_cat="Month first had solid (rounded down)"
+				Age_First_Formula_cat="Month first had formula (rounded down)"
+				Age_First_CowMilk_cat="Month first had cow milk (rounded down)"
+				first_other_food_cat="Month first had other (rounded down)"
+				Breast_Milk_Time_cat="Month stopped breast feeding (rounded down)"
+				feed_type_3mos="Feeding status at 3 mos: exlcusive breast milk, no breast milk, mixed"
+				DESYMP1="Most diff 1 st 9 months: baby crying; adjusting;"
+				DESYMP2="Felt low/sad since most recent child was born"
+				DESYMP3="Often miserable or depressed"
+				DESYMP4="Have no one to share feelings with"
+				DESYMP5="usually find life’s problems too much"
+				TOTDESYMP="total depressive symptomps (2-5)"
+				ANXSYMP1="Often worried about things"
+				ANXSYMP2="Suddenly scared for no reason"
+				ANXSYMP3="Easily upset or irritated"
+				ANXSYMP4="Constantly keyed up or jittery"
+				ANXSYMP5="Heart often races like mad"
+				TOTANXSYMP="Total anxiety symptoms (2-5)"
+				STRSYMP1="Tired most of time"
+				STRSYMP2="Often violent rage"
+				STRSYMP3="Everything gets on nerves"
+				TOTSTRSYMP="Total stress symptoms (2-3)"
+				Parity="0 is 1 kid | 1 is 2 kids | 2 is >2 kids"
+				DepStrAnxScale="TotDep + TotAnx + TotStr";
 				
 	proc contents position;run;
 
-	data analysis.analysis_dat_3; *Added in additional info/classifications on feeding;
+	data analysis.analysis_dat_3; 
 	set analysis_dat;
 run;
 proc contents position;run;
