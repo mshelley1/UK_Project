@@ -40,9 +40,15 @@ set analysis.mother_child_3;
 		Else If APSMCH00=1 then pregnancy_smoke=max(of APCIPR00 APCICH00); * Changed: used max of [before pregnancy, # after change];
 	  end;
 
-/*	 proc freq; tables pregnancy_smoke*APCIPR00 /norow nocol nopercent missing;run;
-	 proc print; var APSMUS0A APSMTY00 APSMCH00 APCIPR00 APCICH00; where pregnancy_smoke=. and  smoking_miss ne 1;run;
-*/
+  * Group pregnancy_smoke;
+	pregnancy_smoke_grp=.;
+	If pregnancy_smoke = 0 then pregnancy_smoke_grp=1;
+	Else if 0 < pregnancy_smoke <= 10 then pregnancy_smoke_grp=2;
+	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
+
+ * Create a few additional that were missed;
+	If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
+	Else Age_First_solid=Age_First_Solid/30;
 
 
 /*--------------*
@@ -116,6 +122,9 @@ set analysis.mother_child_3;
 
 	  If Age_First_CowMilk=-1 then Age_First_CowMilk_cat = 99;
 	  Else Age_First_CowMilk_cat = floor(Age_First_CowMilk/30);
+	  
+	   If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
+	   Else Age_First_solid=floor(Age_First_Solid/30);
 
 	  first_other_food_cat = min(of Age_First_Solid_cat, Age_First_Formula_cat, Age_First_CowMilk_cat);
 
@@ -129,6 +138,7 @@ set analysis.mother_child_3;
 	  If Breast_Milk_Time > 0 and first_other_food_cat >= 3  then feed_type_3mos = "Exclusive breast fed"; * Only 212 this way;
 	  Else if Breast_Milk_Time_cat = 0 and first_other_food_cat < 3 then feed_type_3mos = "No breast feeding";
 	  Else feed_type_3mos="Mixed";
+
 
 /*-----------------------------*
  * Depression, stress, anxiety *
@@ -213,20 +223,56 @@ set analysis.mother_child_3;
 		Else if total_mom_kids=2 then parity=1;
 		Else if total_mom_kids > 2 then parity=2;
 	end;
+  * Age at Parity;
+	If parity=0 then Age_parity_0 = ADDAGB00; else Age_parity_0=.;
+	If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
 
-  * Recodes to match macro for Z-scores of weight/height;
+
+*-----------------*
+* Dummies;
+*-----------------*;
+ 		*proc freq;
+		*tables APLOIL00 APDEAN00 ADD06E00 AHCSEX00 COUNTRY feed_type_3mos education hh_income see_friends treat_now_depression Married parity;
+		*format _All_;
+
+		IF APLOIL00=1 then d_illness=1;
+		Else if APLOIL00=2 then d_illness=0;
+
+		If APDEAN00=1 then d_depression=1;
+		Else if APDEAN00=2 then d_depression=0;
+
+		If ADD06E00=1 then d_nonwhite=0;
+		Else if ADD06E00 ne . then d_nonwhite=1;
+
+		If AHCSEX00=1 then d_female=0;
+		Else if AHCSEX00=2 then d_female=1;
+
+		If COUNTRY=1 then d_otherUK=0;
+		Else if COUNTRY ne . then d_otherUK=1;
+
+		If feed_type_3mos="No breast feeding" then d_noBreast_3mos=1;
+		Else if feed_type_3mos ne "" then d_noBreast_3mos=0;
+
+		If education in (1,2) then d_degree=1;
+		Else if education=9 then d_degree=0;
+		
+		If hh_income=1 then d_income=1;
+		Else if hh_income in (2,3,4) then d_income=0;
+
+		If see_friends=1 then d_seeFriends=1;
+		Else if see_friends=2 then d_SeeFriends=0;
+
+		psg_two =.; psg_three=.;
+		  If pregnancy_smoke_grp=2 then psg_two=1;   else if pregnancy_smoke_grp ne . then psg_two=0;
+		  If pregnancy_smoke_grp=3 then psg_three=1; else if pregnancy_smoke_grp ne . then psg_three=0;
+
+	    If ADMCPO00=-1 then poverty=.;
+	     Else poverty=ADMCPO00;
+
+* Recodes to match macro for Z-scores of weight/height;
 	agedays=age_weighed;
 	If AHCSEX00=1 then sex=1; Else if AHCSEX00=2 then sex=2;
 	height=.;
-/*
-  * Poverty indicator;
-	If ADMCPO00 = -1 then pov_missing=1; Else pov_missing=0;
-	If ADMCPO00 = 1 then pov_below_60pct=1; Else pov_below_60pct=0;
-*/
-run;
-
-proc freq; tables ADMCPO00;run;
-proc contents position;run;
 
 *--------------------------*;
 * Z-scores;
@@ -275,6 +321,12 @@ proc contents position;run;
 * Label, clean up and save;
 	data analysis_dat;
 	set out ;
+
+	If parity=0 then Age_parity_0 = ADDAGB00; else Age_parity_0=.;
+	If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
+
+		wt_change = recent_weight - birth_weight;
+		waz_change = waz_recent - waz_birth;
 
 		label 	waz_recent="weight-for-age z based on most recent weight (WHO macro)"
 				wapct_recent="weight-for-age percentile based on most recent weight (WHO macro)"
@@ -328,10 +380,15 @@ proc contents position;run;
 				
 	proc contents position;run;
 
+*------------------------------------------------------------------*;
+* Output a variety needed for anaylsisy;
+*------------------------------------------------------------------*;
+* All variables and obs;
 	data analysis.analysis_dat_3; 
 	set analysis_dat;
 run;
 proc contents data=analysis.analysis_dat_3 position;run;
+
 
 
 * Output data for visualization;

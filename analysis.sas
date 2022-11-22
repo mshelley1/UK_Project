@@ -2,6 +2,11 @@
 * Run analyses on data set created in "data prep.sas"
 *;
 
+
+**********NOTE: ALL VARIABLE CREATION MOVED TO "DATA PREP.SAS" OLD/ORIGINAL VERISON CAN BE FOUND IN PREVIOUS COMMITS.
+
+
+
 libname analysis "L:\UK Project\Analysis Data\Data sets";
 
 proc format library=analysis.formats;
@@ -24,29 +29,10 @@ set analysis.analysis_dat_3;
 	   		 abs(waz_birth) < 7   /* leaves 18,767 */ and
 			 ADDAGB00 >= 16		  /* leaves 18,663 */ and
 			 ACNOBA00 ne 2 ;
-run;
-data dat2;
-set dat1;
 
-  * Group pregnancy_smoke;
-	pregnancy_smoke_grp=.;
-	If pregnancy_smoke = 0 then pregnancy_smoke_grp=1;
-	Else if 0 < pregnancy_smoke <= 10 then pregnancy_smoke_grp=2;
-	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
-
- * Create a few additional that were missed;
-	If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
-	Else Age_First_solid=Age_First_Solid/30;
-
-	If parity=0 then Age_parity_0 = ADDAGB00; else Age_parity_0=.;
-	If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
-
-	wt_change = recent_weight - birth_weight;
-	waz_change = waz_recent - waz_birth;
-run;
 
   * Get distributions overall ;
-	proc univariate data=dat2 outtable=table noprint;
+	proc univariate data=dat1 outtable=table noprint;
 	proc print data=table;
 	var _VAR_ _NOBS_  _NMISS_ _MEAN_ _STD_ _MIN_ _MAX_;
 	title"";
@@ -57,7 +43,7 @@ run;
 *---* Create data set to be used in regression *-----*
 * Remove vars with lots of missings;
   data model_dat;
-  set dat2 (drop=age_first_solid  ACNOBA00 ACBAGE00 APTRDE00 see_parents);
+  set dat1 (drop=age_first_solid  ACNOBA00 ACBAGE00 APTRDE00 see_parents);
 
 run;
 *-----* Create anayltic sample for Table 1 *----;
@@ -213,34 +199,6 @@ run;
  		*proc freq;
 		*tables APLOIL00 APDEAN00 ADD06E00 AHCSEX00 COUNTRY feed_type_3mos education hh_income see_friends treat_now_depression Married parity;
 		*format _All_;
-
-		IF APLOIL00=1 then d_illness=1;
-		Else if APLOIL00=2 then d_illness=0;
-
-		If APDEAN00=1 then d_depression=1;
-		Else if APDEAN00=2 then d_depression=0;
-
-		If ADD06E00=1 then d_nonwhite=0;
-		Else if ADD06E00 ne . then d_nonwhite=1;
-
-		If AHCSEX00=1 then d_female=0;
-		Else if AHCSEX00=2 then d_female=1;
-
-		If COUNTRY=1 then d_otherUK=0;
-		Else if COUNTRY ne . then d_otherUK=1;
-
-		If feed_type_3mos="No breast feeding" then d_noBreast_3mos=1;
-		Else if feed_type_3mos ne "" then d_noBreast_3mos=0;
-
-		If education in (1,2) then d_degree=1;
-		Else if education=9 then d_degree=0;
-		
-		If hh_income=1 then d_income=1;
-		Else if hh_income in (2,3,4) then d_income=0;
-
-		If see_friends=1 then d_seeFriends=1;
-		Else if see_friends=2 then d_SeeFriends=0;
-
 run;
 
 

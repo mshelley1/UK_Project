@@ -4,9 +4,6 @@
 * Code below was first pass based on initial set of vars. Can be refactored/adapted for final set
 *************************************************************************************************************;
 
-
-
-
 *-----* Create anayltic sample for Table 1 *----;
 * For table 1, need to also drop obs with any missings;
   data table1_dat;  *16728 obs*;
@@ -19,7 +16,6 @@
 	If parity>0 then Age_parity_gt0 = ADDAGB00; else Age_parity_gt0=.;
 
 run;
-
 
 
 /*-----------------------
