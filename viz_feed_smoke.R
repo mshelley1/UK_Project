@@ -5,7 +5,9 @@ library(ggplot2)
 library(haven)
 library(randomForest)
 
-indat<-read_sas('//cifs.isip01.nas.umd.edu/SPHLFMSCShare/Labs/Shenassa/UK Project/Analysis Data/Data sets/smoke_feed_viz.sas7bdat')
+#indat<-read_sas('//cifs.isip01.nas.umd.edu/SPHLFMSCShare/Labs/Shenassa/UK Project/Analysis Data/Data sets/smoke_feed_viz.sas7bdat')
+
+indat<-read_sas('//cifs.isip01.nas.umd.edu/SPHLFMSCShare/Labs/Shenassa/UK Project/Analysis Data/Data sets/analysis_dat_3.sas7bdat')
 
 indat<-mutate(indat, waz_change=waz_recent - waz_birth)
 indat<-mutate(indat, cig_now=ifelse(APSMMA00==0|is.na(APSMMA00),0,ifelse(1<=APSMMA00 & APSMMA00<=10,1,2)))
@@ -47,6 +49,8 @@ ggplot(indat, aes(x=pregnancy_smoke, y=APSMMA00)) +
 ggplot(indat, aes(x=feed_type_3mos, y=waz_recent)) +
   geom_boxplot() + facet_wrap(vars(sex))
 
+ggplot(indat, aes(feed_type_3mos)) +
+  geom_bar()  + facet_wrap(current_smoke)
 
 
 

@@ -46,9 +46,16 @@ set analysis.mother_child_3;
 	Else if 0 < pregnancy_smoke <= 10 then pregnancy_smoke_grp=2;
 	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
 
- * Create a few additional that were missed;
-	If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
-	Else Age_First_solid=Age_First_Solid/30;
+  * Smoking in three months after birth (Note: variable about when changed is only during 9 mos of pregnancy - current smoke is probably closest);
+	If APSMMA00=. then current_smoke=0;
+	Else current_smoke=APSMMA00;
+
+	current_smoke_grp=.;
+	If current_smoke = 0 then current_smoke_grp=1;
+	Else if 0 < current_smoke <= 10 then current_smoke_grp=2;
+	Else if 10 < current_smoke then current_smoke_grp=3;
+
+/*	proc freq; tables pregnancy_smoke*current_smoke /norow nocol nopercent missing;run;*/
 
 
 /*--------------*
@@ -123,8 +130,8 @@ set analysis.mother_child_3;
 	  If Age_First_CowMilk=-1 then Age_First_CowMilk_cat = 99;
 	  Else Age_First_CowMilk_cat = floor(Age_First_CowMilk/30);
 	  
-	   If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
-	   Else Age_First_solid=floor(Age_First_Solid/30);
+	  If Age_First_solid=-1 then Age_First_Solid=ACBAGE00;
+	  Else Age_First_solid=floor(Age_First_Solid/30);
 
 	  first_other_food_cat = min(of Age_First_Solid_cat, Age_First_Formula_cat, Age_First_CowMilk_cat);
 
@@ -135,10 +142,9 @@ set analysis.mother_child_3;
 	  	 proc freq; tables breast_milk_time_cat * Age_first_solid_cat /norow nocol nopercent missing; */
 
 	* Overall feeding categories: exclusive breast fed, exclusive formula, mixed;
-	  If Breast_Milk_Time > 0 and first_other_food_cat >= 3  then feed_type_3mos = "Exclusive breast fed"; * Only 212 this way;
-	  Else if Breast_Milk_Time_cat = 0 and first_other_food_cat < 3 then feed_type_3mos = "No breast feeding";
-	  Else feed_type_3mos="Mixed";
-
+	  If Breast_Milk_Time > 0 and first_other_food_cat >= 3  then feed_type_3mos = 1; * "Exclusive breast fed";
+	  Else if Breast_Milk_Time_cat = 0 and first_other_food_cat < 3 then feed_type_3mos = 2; * "No breast feeding";
+	  Else feed_type_3mos=3; *"Mixed";
 
 /*-----------------------------*
  * Depression, stress, anxiety *
@@ -262,12 +268,21 @@ set analysis.mother_child_3;
 		If see_friends=1 then d_seeFriends=1;
 		Else if see_friends=2 then d_SeeFriends=0;
 
-		psg_two =.; psg_three=.;
-		  If pregnancy_smoke_grp=2 then psg_two=1;   else if pregnancy_smoke_grp ne . then psg_two=0;
-		  If pregnancy_smoke_grp=3 then psg_three=1; else if pregnancy_smoke_grp ne . then psg_three=0;
+		psg_2 =.; psg_3=.;
+		  If pregnancy_smoke_grp=2 then psg_2=1;   else if pregnancy_smoke_grp ne . then psg_2=0;
+		  If pregnancy_smoke_grp=3 then psg_3=1; else if pregnancy_smoke_grp ne . then psg_3=0;
+		
+		csg_2 =.; csg_3=.;
+		  If current_smoke_grp=2 then csg_2=1;   else if current_smoke_grp ne . then csg_2=0;
+		  If current_smoke_grp=3 then csg_3=1; else if current_smoke_grp ne . then csg_3=0;
 
 	    If ADMCPO00=-1 then poverty=.;
 	     Else poverty=ADMCPO00;
+
+		If feed_type_3mos = "Exclusive breast fed" then do; feed3mo_breast=1; feed3mo_mixed=0; end;
+		If feed_type_3mos = "Mixed" then do; feed3mo_mixed=1; feed3mo_breast=0; end;
+		If feed_type_3mos = "No breast feeding" then do; feed3mo_breast=0; feed3mo_mixed=0; end;
+
 
 * Recodes to match macro for Z-scores of weight/height;
 	agedays=age_weighed;
@@ -288,7 +303,7 @@ set analysis.mother_child_3;
 /*	proc univariate data=_whodata; var waz; histogram waz;title "recent weight for age z";run;*/
 
 	data recent;
-	set _whodata(keep=sex wapct waz weight MCSID--parity rename=(waz=waz_recent wapct=wapct_recent weight=recent_weight));
+	set _whodata(keep=sex wapct waz weight MCSID-- feed3mo_mixed rename=(waz=waz_recent wapct=wapct_recent weight=recent_weight));
 
 run;
 
@@ -379,6 +394,7 @@ proc contents position;run;
 				DepStrAnxScale="TotDep + TotAnx + TotStr";
 				
 	proc contents position;run;
+	proc freq; tables current_smoke_grp;run;
 
 *------------------------------------------------------------------*;
 * Output a variety needed for anaylsisy;
@@ -393,7 +409,10 @@ proc contents data=analysis.analysis_dat_3 position;run;
 
 * Output data for visualization;
   data temp;
-  set analysis.analysis_dat_3 (keep=
+  set analysis.analysis_dat_3;
+
+
+(keep=
  				waz_recent
 				wapct_recent
 				waz_birth
