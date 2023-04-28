@@ -62,35 +62,37 @@ run;
 * Impute;
 *------------------------------------------------*;
 
+ /*
 * Drop obs where outcome is missing (can't impute outcome or exposure vars);
   data model_dat_for_impute;
   set model_dat;
-	where waz_change ne .;
-
+	*where waz_change ne .; *this provides info about the pattern of missingness in other vars, so need ot leave it in  https://www.bmj.com/content/338/bmj.b2393.full.print;
+*/
 * Check for missings and patterns of missing;
   proc means data=model_dat_for_impute nmiss;	run;
   proc mi data=model_dat_for_impute nimpute=0;
-  	ods select misspattern;
+   	ods select misspattern;
+	var waz_change pregnancy_smoke_grp current_smoke_grp feed_type_3mos pttype2  /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/
+		ADDAGB00 ADGEST00 ;
  	*poverty, dep scale, and accadmo had the most missings;
+run;
 
 * Impute;
-  PROC SURVEYIMPUTE data= model_dat_for_impute ;   *https://www.lexjansen.com/phuse-us/2018/dh/DH04_ppt.pdf*; *https://support.sas.com/resources/papers/proceedings16/SAS3520-2016.pdf;
-  class pregnancy_smoke_grp current_smoke_grp feed_type_3mos /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/;
-  strata  pttype2;
-  cluster  MCSID sptn00;
-  weight  aovwt2;
-  VAR  parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/
-		ADDAGB00 ADGEST00;
-  output out=imputed_dat;
-
+  PROC MI data=model_dat_for_impute out=imputed_dat seed=54321;
+   class pttype2  /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/;
+   fcs discrim(pttype2/details) discrim(parity/details) discrim(Married/details) discrim(poverty/details);
+   VAR pttype2  /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/
+		ADDAGB00 ADGEST00 ;
 run;
 
 * Run model on imputed data. Include by to do it separately for each of the imputed data sets. We use surveyreg instead of glm;
-  title "Multiple imputation model";
-	PROC SURVEYREG data=imputed_dat ;	
+  title "Multiple imputation model";	
+	PROC SURVEYREG data=imputed_dat;
 	class pregnancy_smoke_grp current_smoke_grp feed_type_3mos /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/;
 	model waz_change= pregnancy_smoke_grp current_smoke_grp feed_type_3mos /*health_probs*/ parity /*treat_now_depression DSA_grp*/ Married poverty d_OtherUK /*d_illness*/ d_nonwhite d_female d_degree /*d_seeFriends*/
 		ADDAGB00 ADGEST00 /solution;
+	*model waz_change= pregnancy_smoke_grp current_smoke_grp ADDAGB00 --  d_seeFriends;
+	by _imputation_;
 	strata  pttype2;
 	cluster  MCSID sptn00;
 	weight  aovwt2;

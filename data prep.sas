@@ -47,13 +47,20 @@ set analysis.mother_child_3;
 	Else if 10 < pregnancy_smoke then pregnancy_smoke_grp=3;
 
   * Smoking in three months after birth (Note: variable about when changed is only during 9 mos of pregnancy - current smoke is probably closest);
-	If APSMMA00=. then current_smoke=0;
-	Else current_smoke=APSMMA00;
+	* Current smoking: APSMMA00	Variable label = How many cigarettes per day; 
 
+
+/*
+	If APSMUS0A=1 then current_smoke=0;
+	Else current_smoke=APSMMA00;
+run;
+*/
 	current_smoke_grp=.;
 	If current_smoke = 0 then current_smoke_grp=1;
 	Else if 0 < current_smoke <= 10 then current_smoke_grp=2;
 	Else if 10 < current_smoke then current_smoke_grp=3;
+
+proc freq; tables current_smoke_grp;run;
 
 /*	proc freq; tables pregnancy_smoke*current_smoke /norow nocol nopercent missing;run;*/
 
