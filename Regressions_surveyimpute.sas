@@ -46,7 +46,7 @@ run;
 
  data model_dat;
 	retain MCSID pttype2 sptn00 aovwt2 waz_change waz_birth pregnancy_smoke_grp current_smoke_grp feed_type_3mos ADDAGB00 ADGEST00 parity 
-			 poverty  Married d_nonwhite d_female d_otherUK d_degree ;  
+			 poverty  Married d_nonwhite d_female d_otherUK d_degree;  
 set dat1 (keep=MCSID ACNUM00 pttype2 sptn00 aovwt2 waz_change waz_birth pregnancy_smoke_grp current_smoke_grp feed_type_3mos ADDAGB00 ADGEST00 parity 
 			d_nonwhite d_female d_degree  Married d_otherUK poverty);
 run;
@@ -149,9 +149,6 @@ title "";
 run;
 
 
-
-
-
 *--------------------------------------------------------------------------------------------------------*;
 
 *--------------;
@@ -177,27 +174,17 @@ run;
 * Table 1; * Note: put this in a %include file once it works;
   proc contents position data=table1_dat; run;
 
- * Find vars for dummies
-	waz_change 
-	waz_birth 
-	pregnancy_smoke_grp 
-	current_smoke_grp 
-	feed_type_3mos 
-	ADDAGB00 
-	ADGEST00 
-	parity 
-	poverty 
-	Married 
-	d_nonwhite 
-	d_female 
-	d_otherUK 
-	d_degree;
+  data table1_vars;
+  set table1_dat (keep=pregnancy_smoke_grp waz_change waz_recent waz_birth ADDAGB00 ADGEST00 current_smoke_grp
+						feed_type_3mos parity poverty Married d_female d_degree ADACAQ00 ADD06E00 COUNTRY
+						wt_change);
+run;
 
   *-------------------------*;
   *----- Continuous  *------*;
   *-------------------------*;
   data t1_cont;
-  set table1_dat (keep=pregnancy_smoke_grp waz_change waz_recent waz_birth ADDAGB00 ADGEST00);
+  set table1_vars (keep=pregnancy_smoke_grp waz_change waz_recent waz_birth wt_change ADDAGB00 ADGEST00);
 
     * Stats for all obs;
 	  proc univariate data=t1_cont  (drop=pregnancy_smoke_grp)  outtable=t1c_out noprint;  run;
@@ -241,12 +228,12 @@ run;
 		data table_out;
 		merge t1c_out_all grp_1 grp_2 grp_3;
 		by _VAR_;  
-			proc print data=table_out;
+			*proc print data=table_out;
 
   	* ANOVA/p-val for continuous;
 		proc anova data=t1_cont outstat=cont_out;
 		class pregnancy_smoke_grp;
-		model waz_recent--waz_birth wt_change--Age_parity_gt0=pregnancy_smoke_grp;		
+		model waz_change waz_recent waz_birth wt_change ADDAGB00 ADGEST00 = pregnancy_smoke_grp;		
 	run;
      * Merge with table_out;
 	   data cont_out2;
@@ -267,14 +254,17 @@ run;
   *-------------------------*;
   *----- Categorical  *------*;
   *-------------------------*;
+proc contents data=table1_vars position;run;
+
   data cat_dat;
-  set table1_dat (keep=pregnancy_smoke_grp ADD06E00 COUNTRY Married education APLOIL00 treat_now_depression see_friends AHCSEX00 feed_type_3mos);
+  set table1_vars /*(keep=pregnancy_smoke_grp ADD06E00 COUNTRY Married education APLOIL00 feed_type_3mos poverty d_female) */
+  	(keep=pregnancy_smoke_grp current_smoke_grp ADD06E00 COUNTRY ADACAQ00 Married feed_type_3mos parity  d_female d_degree poverty); 
 run;
 
   * Loop through list of categorical vars, running proc freq for each and creating output data sets;	
 	%macro cat_tbl1;
 		%local i next_name varn;
-		%let varn=ADD06E00 COUNTRY Married education APLOIL00 treat_now_depression see_friends AHCSEX00 feed_type_3mos;
+		%let varn= current_smoke_grp ADD06E00 COUNTRY ADACAQ00 Married feed_type_3mos parity  d_female d_degree poverty; /*ADD06E00 COUNTRY Married education APLOIL00 feed_type_3mos poverty d_female;*/
 		%put &varn;
 		%do i=1 %to %sysfunc(countw(&varn));
 			%let next_name = %scan(&varn, &i);
@@ -307,6 +297,14 @@ run;
 		%end;			
 	%mend cat_tbl1;
 
-	ods excel file = "L:\UK Project\Exploratory results\Table 1.xlsx" options(sheet_interval='none') ;
+	ods excel file = "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\shenassa\UK Project\Exploratory results\Table 1 v2.xlsx" options(sheet_interval='none') ;											
 	%cat_tbl1;
 	ods excel close;
+
+
+* Save continuous data set so can read into R. For discreet, will read Excel file into R.;
+  data analysis.table1_continuous;
+  set cont_all (rename=(_VAR_ = vname));
+  	
+  run;
+  proc contents;run;
