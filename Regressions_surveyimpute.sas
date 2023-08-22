@@ -6,6 +6,7 @@
 * 1) Explore ACADMO - baby health problems;
 
 libname analysis "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Analysis Data\Data sets";
+libname t1cat "\\cifs.isip01.nas.umd.edu\SPHLFMSCShare\Labs\Shenassa\UK Project\Analysis Data\Data sets\table1 categorical";
 
 proc format library=analysis.formats;
 options fmtsearch=(analysis.formats work);
@@ -294,6 +295,11 @@ run;
 			merge out chisq_&next_name;
 		
 			proc print data=out_&next_name;	run;
+
+		  *Save data sets for reading into R for graphing;
+			data t1cat.out_&next_name;
+			set out_&next_name;
+
 		%end;			
 	%mend cat_tbl1;
 
@@ -301,10 +307,11 @@ run;
 	%cat_tbl1;
 	ods excel close;
 
-
+/*
 * Save continuous data set so can read into R. For discreet, will read Excel file into R.;
   data analysis.table1_continuous;
   set cont_all (rename=(_VAR_ = vname));
   	
   run;
   proc contents;run;
+*/
