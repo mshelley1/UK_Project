@@ -156,6 +156,12 @@ run;
 * Output tables;
 *--------------;
 
+* Output model_dat_nomiss which contains variables for SPEER presentation;
+  data analysis.model_dat_nomiss;
+  set model_dat_nomiss;
+  run;
+
+
 * Merge model_dat_nomiss with other vars. Note: had to eliminate other vars previously in order for cmiss to work properly on model vars only.
   Keep only the row identifiers and get variables from the other data set because model_dat_nomiss contains imputed values which can't go into table 1.;
   data model_dat_nomiss_ids;

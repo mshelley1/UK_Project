@@ -38,6 +38,14 @@ library(ggthemes)
     # Arrange the plots in a grid
       grid.arrange(grobs = plots, ncol = 2)  # Adjust ncol as needed
     
+      
+      
+      
+     
+      
+      
+      
+      
 
 #
 # Read in Table 1 Categorical vars
@@ -54,6 +62,17 @@ library(ggthemes)
         geom_bar(stat = "identity", fill = "blue") +
         labs(title = "Counts by Category", x = "Category", y = "Count") +
         theme_minimal() 
+      
+      data_long <- pivot_longer(test, cols=c(COUNT_1,COUNT_2))
+      
+            # Create a grouped bar chart
+      ggplot(data_long, aes(x = Category, y = Value, fill = Key)) +
+        geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.6) +
+        labs(title = "Counts by Category", y = "Counts") +
+        scale_fill_manual(values = c("COUNT_1" = "blue", "COUNT_2" = "green")) +
+        theme_minimal() +
+        theme(legend.position = "top", axis.text.x = element_text(angle = 45, hjust = 1))
+      
       
       
       
