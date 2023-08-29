@@ -100,7 +100,7 @@ run;
 	strata  pttype2;
 	cluster  MCSID sptn00; 
 	weight  aovwt2;
-	ods output ParameterEstimates=a_parm_est;
+	*ods output ParameterEstimates=a_parm_est;
 run;
 
   title "*----------* Interaction terms - add covariates, no main effect *----------* ";
@@ -121,7 +121,8 @@ run;
 	strata  pttype2;
 	cluster  MCSID sptn00; 
 	weight  aovwt2;
-	ods output ParameterEstimates=a_parm_est;
+	output out=outmodel_interaction
+			predicted=predicted residual=residuals std=stderr;
 run;
 
 * Girls v. boys;
@@ -314,10 +315,14 @@ run;
 	ods excel close;
 
 /*
-* Save continuous data set so can read into R. For discreet, will read Excel file into R.;
+*-----* Save permananet output data sets for reading into R fir viz *----*;
   data analysis.table1_continuous;
   set cont_all (rename=(_VAR_ = vname));
   	
   run;
   proc contents;run;
 */
+
+	data analysis.OUTMODEL_INTERACTION;
+	set OUTMODEL_INTERACTION;
+;run;
